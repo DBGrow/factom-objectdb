@@ -13,25 +13,8 @@ function Object(object) {
         return self.object;
     };
 
-    self.applyUpdate = function applyUpdate(update, callback) {
+    self.applyUpdate = function applyUpdate(update) {
         //check for safety:
-
-        //original object
-        {
-            fieldname:'hello'
-        }
-
-        //update to apply
-        {
-            $set:{
-                fieldname:'kajsk'
-            }
-        }
-
-        //result
-        {
-            fieldname:'kajsk'
-        }
 
         //check for duplicate operations on the same field
 
@@ -122,7 +105,7 @@ function Object(object) {
                     }
 
                     default: {
-                        console.log('Unknown Update!: ' + op)
+                        console.error('Skipping Unknown Update! Object: ' + JSON.stringify(update))
                     }
                 }
             }

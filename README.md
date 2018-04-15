@@ -1,32 +1,30 @@
 # factom-objectdb
-Object database implementation for the Factom protocol written in NodeJS
+Object database implementation for the Factom protocol written in NodeJS.
 
-## State of development
+# State of development
 
-This library is in active development, currently at proof of concept stage. Commits in the `development` branch may contain breaking changes
-
-~~Branch `development` contains the most recent builds versions!~~
-
-### Current Capabilities
-
-The following capabilities have been tested and are working with the [Factom Testnet](/):
-
-- Can take an object with a unique ID and initiate it's chain
-- AES256 encryption and decryption of object chains and their metadata is supported.
+This library is in active development, currently at proof of concept stage. Commits may contain breaking changes!
 
 ## Prerequisites
 
 ### Factom
 
-You must have a funded Factoid or EntryCredit address to begin storing objects. Reading stored objects is free! The address must remain funded to continue creating entries! You may use testnet addresses and servers.
+You must have the following to write objects using this library:
 
-## Mechanism
+-  A funded public EntryCredit address
+- Access to the `factomd-api` and `walletd-api`
 
-When an object is inserted, the library will create a new `Chain` with the first `Entry` being the hash of the complete object. The `Chain`'s external ID's will contain the ID of the object, as well as it's namespace within the database.
+The public EC address must remain funded to continue creating entries! You may use testnet addresses and servers.
 
-Updates to the object will result in a new `Entry` being placed on the object's `Chain`, containing the hash of the new version the object or the update to the object itself.
+Reading stored objects is **free** and does not require an EC address.
 
-## Examples
+# Mechanism
+
+When a new object is inserted into a database, the library will create a new `Chain` with the first `Entry` being a metadata entry for the object.
+
+Updates and other events about the object will result in a new `Entry` being placed on the object's `Chain`, containing the hash of the new version the object or the update to the object itself.
+
+# Examples
 
 ### Initialization
 
@@ -35,9 +33,9 @@ var {FactomObjectDB} = require('./src/FactomObjectDB');
 
 //get db object async
 new FactomObjectDB({
-    factomd_host: FACTOMD_IP,
-    walletd_host: FACTOMD_IP,
-    ec_address: FACTOM_EC,
+    ec_address: FACTOM_EC, //public EC address
+    encrypt : true, //enable/disable encryption (default enabled)
+    private_key_path : undefined //Path to your private key to encrypt and decrypt entries. By default will be ./crypto/demo_private.pem unless you set encryption : false
 }, function (err, db) {
     if (err) throw err;
     
@@ -56,21 +54,26 @@ var db = new FactomObjectDB({
 
 ### Store an Object
 
-```javascript
-var ObjectId = require('objectid');
-var object = { //All fields must be able to be serialized by JSON.stringify!
-	_id: new ObjectId(), //required. Just has to be a unique ID for your object
-	//you may add any other field you'd like here!
-};
+Store new object.
 
-db.initObjectChain({
-    db_id: 'factomdbtest:0.0.0',
-    object: object
-},
-function (err, chain) {
-    if (err) throw err;
-    console.log(JSON.stringify(chain, undefined, 2));
-});
+```javascript
+ var ObjectId = require('objectid');
+
+        var object = {
+            _id: new ObjectId(), //required
+            // add any JSON serializable object fields here!
+            status: true,
+            status_message: "It's Alive!"
+        };
+
+        db.commitObject({
+                db_id: 'factomdbtest:0.0.0',
+                object: object
+            },
+            function (err, chain) {
+                if (err) throw err;
+                console.log(chain);
+            });
 ```
 
 Output:
@@ -86,82 +89,175 @@ Output:
 
 
 
-### Get an Object Chain's Metadata
+### Get an Object
+
+Get an object on DB `factomdbtest:0.0.0` with objectID `5ad28b9d18c35e2b4c000001`
 
 ```javascript
-var {FactomObjectDB} = require('./src/FactomObjectDB');
-
-//Get DB Wrapper Async
-new FactomObjectDB({
-    factomd_host: FACTOMD_IP, //replace with your factomd's
-    walletd_host: FACTOMD_IP,
-    factom_ec: FACTOM_EC, //your private Entry Credit address
-}, function (err, db) {
-    if (err) throw err;
-    
-    //get the JSON metadata for object in database 5acd81b0ace6a1781d000001 from database 'factomdbtest:0.0.0' (the first entry in the object's chain)
-    
-    db.getChainMetaContent("factomdbtest:0.0.0", "5acd81b0ace6a1781d000001", function (err, content) {
+db.getObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
         if (err) {
             console.error(err);
             return;
         }
-        console.log('Retrieved Object!:\n' + JSON.stringify(content, undefined, 2));
-    });
+        console.log('Retrieved Object:\n' + JSON.stringify(object, undefined, 2));
 });
 ```
 
 Output:
 
 ```javascript
+Retrieved Object:
 {
-  "_id": "5acd81b0ace6a1781d000001", //the ID of the object
-  "protocol_version": "0.0.0a", //the factom-objectdb protocol version
-  "hashed": false, 
-  "message": "@drkatz --- 'It's Alive!' --- This is beginning of an object's chain!697ede"
-  "init_object": {
-  "_id": "5acd81b0ace6a1781d000001", //the ID of the object
-  //your other fields
-  }
+  "_id": "5ad28b9d18c35e2b4c000001",
+  "status": true,
+  "status_message": "It's Alive!",
+  "test_field": "hello there!",
+  "errors": 99,
+  "friends": 0.2537180160835515,
+  "count": 23
 }
-
-// All possible fields:
-{
-  _id: params.object._id, //Unique ID of the object this chain tracks. Also acts as timestamp if ObjectID. Regex for this?
-  protocol_version: '0.0.0a', //The version of the protocol this object chain was initialized with. Set by this library
-  hashed: false, //Whether the content of the entries in this chain will be hashes of objects/changes or not.
-            //hashed = true will provide proof of existence and authenticity
-            //hashed = false will provide everything in hashed = true and allow point in time reconstructions/backups of complete objects
- parent: undefined, //if this chain is a continuation or branch of another, specify that chain's ID
-
- //user defined stuff
- message: undefined,
- user_meta: undefined //JSON Metadata from the user
-}
-
 ```
 
 
 
-## Object Chain Structure
+### Update an Object
+
+This library uses a [MongoDB inspired update syntax](https://docs.mongodb.com/manual/reference/operator/update/#id1). 
+
+Currently, these operators are supported:
+
+- `$set` : Set the value of a key in the object
+- `$unset` : Delete the key and value from an object
+- `$rename` : Rename the key of an object
+- `$inc` : Increase the value of the key of an object by an amount
+- `$mul` : Multiply the value of the key of an object by an amount
+
+These operators follow the same rules as their Mongodb counterparts.
+
+##### Example
+
+Update an object on DB `factomdbtest:0.0.0` with objectID `5ad28b9d18c35e2b4c000001` to set field `count` equal to `10`.
+
+```javascript
+var update = {
+        $set: {
+            count: 10
+        }
+};
+
+db.commitObjectUpdate("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001",
+        update
+        , function (err, entry) {
+            if (err) throw err;
+            console.log('Committed entry with hash' + entry.entryHash.toString('hex'))
+});
+```
+
+Output:
+
+```javascript
+Retrieved Object:
+{
+  "_id": "5ad28b9d18c35e2b4c000001",
+  "status": true,
+  "status_message": "It's Alive!",
+  "test_field": "hello there!",
+  "errors": 99,
+  "friends": 0.2537180160835515,
+  "count": 23
+}
+```
+
+
+
+### Index An Object
+
+Get an object on DB `factomdbtest:0.0.0`'s metadata with objectID `5ad28b9d18c35e2b4c000001`
+
+```javascript
+db.commitObjectIndex("5ad28b9d18c35e2b4c000001", function (err, object) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            // console.timeEnd('GetObject');
+            console.log('Retrieved Object:\n' + JSON.stringify(object, undefined, 2));
+        });
+```
+
+Output:
+
+```javascript
+GOT META!
+{
+  "type": "meta",
+  "_id": "5ad28b9d18c35e2b4c000001",
+  "protocol_version": "0.0.0a",
+  "hashed": false,
+  "message": "'It's Alive!' --- This is beginning of an object's chain!",
+  "init_object": {
+    "_id": "5ad28b9d18c35e2b4c000001",
+    "status": true,
+    "status_message": "It's Alive!"
+  }
+}
+```
+
+
+
+
+
+### Get an Object Chain's Metadata
+
+Get an object on DB `factomdbtest:0.0.0`'s metadata with objectID `5ad28b9d18c35e2b4c000001`
+
+```javascript
+ db.getChainMetaObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
+        if (err) throw err;
+        console.log('GOT META!');
+        console.log(JSON.stringify(object, undefined, 2));
+});
+```
+
+Output:
+
+```javascript
+GOT META!
+{
+  "type": "meta",
+  "_id": "5ad28b9d18c35e2b4c000001",
+  "protocol_version": "0.0.0a",
+  "hashed": false,
+  "message": "'It's Alive!' --- This is beginning of an object's chain!",
+  "init_object": {
+    "_id": "5ad28b9d18c35e2b4c000001",
+    "status": true,
+    "status_message": "It's Alive!"
+  }
+}
+```
+
+
+
+# Chain Structure
 
 Each object is represented as a chain of Entries.
 
-### Entry Construction
+### Entry Content Construction
 
-Object --> JSON String --> AES256 PK Signing* --> DEFLATE compression (RFC 1951) --> content of Entry
+`ExtIDS[0] = SHA256(db_id + object_id)`
+`content =Zipped, (and optionally encrypted) JSON metadata object`
+
+Object --> JSON String --> AES256 PK Encryption* --> DEFLATE compression (RFC 1951) --> content of Entry
 
  (* = conditional)
 
+Follow in reverse for Object construction from content
+
 ### First Chain Entry
 
- Contains metadata about the chain including the first version of the object. If the chain is private (signed by PK) then the metadata and all the Entry content of the chain must be signed by the same PK to be interpreted as authentic.
-##### Structure
-
-`ExtIDS[0] = SHA256(db_id + object_id)`
-`content = JSON metadata object`
-
-##### Metadata
+Contains metadata about the chain including the first version of the complete object. If the chain is private (signed by PK) then the metadata and all the Entry content of the chain must be signed by the same PK to be interpreted as authentic.
+##### Metadata Structure
 
 ```javascript
 {
@@ -176,20 +272,49 @@ init_object: object //the object at the time of initialization
 
 ### Additional Chain Entries
 
-Contains the next version of the object(experimental: or JSON object specifying an event).
+Think of additional chain entries kind of like commits to a Git repo!
 
-If the chain has `hashed=true` then each entry's content will be the MD5 hash of the new version of the object.
-
-If the chain has `hashed = false` then the entry's content is a JSON representation of the update applied to the object to bring it to it's current state.
-
-Think of additional chain entries as commits of a Git repo!
+They represent checkpoints in time where updates and events happened.
 
 ##### Structure
 
-ExtId[0] = 
+`ExtId[0]` =  Unix Epoch Converted to String of when this entry was made
 
-##### JSON Events
+`content` = zipped (Optionally incrypted) content of the entry
 
-More info coming soon...
+### Entry Content
+
+### Updates
+
+Update entries represent an update to the object
+
+```javascript
+{
+    $set: {
+        count: count
+    }
+}
+```
+
+### Indexes
+
+Index entries represent a point in time snapshot of the object
+
+```javascript
+{
+    type: 'index',
+    index_object: { //the complete copy of the object at ExtID[0] Unix epoch
+  		"_id": "5ad28b9d18c35e2b4c000001",
+  		"status": true,
+  		"status_message": "It's Alive!",
+  		"test_field": "hello there!",
+  		"errors": 99,
+  		"friends": 0.2537180160835515,
+  		"count": 23
+	}
+}
+```
+
+
 
 ​    
