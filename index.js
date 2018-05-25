@@ -18,6 +18,28 @@ new FactomObjectDB({
 }, function (err, db) {
     if (err) throw err;
 
+    console.log('Setting obj rules');
+
+
+    //builder examples
+    var FieldRules = require('./src/rules/FieldRules');
+    var fieldrules = new FieldRules.Builder()
+        .setType('string')
+        .setEditable(true)
+        .build();
+
+    console.log(fieldrules);
+
+    var ObjectRules = require('./src/rules/ObjectRules');
+
+    var objectrules = new ObjectRules.Builder()
+        .setSigned(true)
+        .setMaxUpdates(500)
+        .setFieldRule('a', fieldrules)
+        .build();
+
+    console.log(objectrules)
+
     // console.time('GetObject');
     /*db.getObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
         if (err) {
