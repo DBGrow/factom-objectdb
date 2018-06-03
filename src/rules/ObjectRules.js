@@ -5,7 +5,7 @@ var allfields = {
 
     //encryption
     signed: false, //require updates to this chain to be signed
-    length: ['pubkey1'],
+    keys: ['pubkey1'],
 
     fields: {
         a: { //field name
@@ -38,7 +38,7 @@ this.Builder = function Builder(rules) {
         self.rules.lockat = rules.lockat ? rules.lockat : undefined;
         self.rules.maxupdates = rules.maxupdates ? rules.maxupdates : undefined;
         self.rules.signed = rules.signed ? rules.signed : undefined;
-        self.rules.length = rules.length ? rules.length : undefined;
+        self.rules.keys = rules.keys ? rules.keys : undefined;
         self.rules.fields = rules.fields ? rules.fields : undefined;
     }
 
@@ -61,8 +61,8 @@ this.Builder = function Builder(rules) {
         self.rules.signed = signed;
         return this;
     };
-    this.setPubKeys = function (pubkeys) {
-        self.rules.length = length;
+    this.setKeys = function (keys) {
+        self.rules.keys = keys;
         return this;
     };
     this.setFieldRule = function (field, rule) {
@@ -81,7 +81,7 @@ this.Builder = function Builder(rules) {
         lockat: 'number',
         maxupdates: 'number',
         signed: 'boolean',
-        length: 'array',
+        keys: 'array',
         fields: 'object'
     };
 

@@ -14,7 +14,7 @@
   },
   "homepage": "https://github.com/drkatz/factom-objectdb#readme",
   "dependencies": {
-    "factom": "0.1.2",
+    "factom": "0.2.0",
     "aes256": "1.0.3",
     "objectid": "3.2.1"
   }

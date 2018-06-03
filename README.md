@@ -3,7 +3,7 @@ Object database implementation for the Factom protocol written in NodeJS.
 
 # State of development
 
-This library is in active development, currently at proof of concept stage. Commits may contain breaking changes!
+This library is in active development, currently at alpha stage. Commits may contain breaking changes!
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ This library is in active development, currently at proof of concept stage. Comm
 
 You must have the following to write objects using this library:
 
--  A funded public EntryCredit address
+-  A funded public/private Entry Credit address
 - Access to the `factomd-api` and `walletd-api`
 
 The public EC address must remain funded to continue creating entries! You may use testnet addresses and servers.
@@ -20,7 +20,7 @@ Reading stored objects is **free** and does not require an EC address.
 
 # Mechanism
 
-When a new object is inserted into a database, the library will create a new `Chain` with the first `Entry` being a metadata entry for the object.
+When a new object is inserted into a database, the library will create a new Chain with the first Entry being a metadata entry for the object.
 
 Updates and other events about the object will result in a new `Entry` being placed on the object's `Chain`, containing the hash of the new version the object or the update to the object itself.
 

@@ -2,66 +2,65 @@ var {FactomObjectDB} = require('./src/FactomObjectDB');
 var ObjectId = require('objectid');
 var crypto = require('crypto');
 
-//Enter your own testnet server or use courtesy IP/DNS!
-var FACTOMD_IP/* = process.env.FACTOMD_IP*/;
+//Testnet credentials, enjoy the free testnet EC's!
+const EC = 'EC1tE4afVGPrBUStDhZPx1aHf4yHqsJuaDpM7WDbXCcYxruUxj2D';
+const ES = 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a';
 
-var FACTOM_EC = process.env.FACTOM_EC;
-var FACTOM_ES = process.env.FACTOM_ES;
+//arguments
+//
 
-console.log('Factomd API IP ' + FACTOMD_IP);
-console.log('Using EC address ' + FACTOM_EC);
-console.log('Using ES address ' + FACTOM_ES);
-new FactomObjectDB({
-    ec_address: FACTOM_EC,
-    es_address: FACTOM_ES,
-    db_id: 'factomdbtest:0.0.0'
-}, function (err, db) {
-    if (err) throw err;
+var db = new FactomObjectDB({
+    db_id: 'factomdbtest:0.0.1',
+    factomparams: {host: '88.200.170.90'},
+    ec_address: EC,
+    es_address: ES,
+});
+console.log('Setting obj rules');
 
-    console.log('Setting obj rules');
+//builder examples
+var FieldRules = require('./src/rules/FieldRules');
+var fieldRules = new FieldRules.Builder()
+    .setType('string')
+    .setEditable(true)
+    .build();
+
+// console.log(fieldrules);
+var ObjectRules = require('./src/rules/ObjectRules');
+
+var objectRules = new ObjectRules.Builder()
+    .setFieldRule('a', fieldRules)
+    .build();
+
+var object = {
+    _id: new ObjectId(),
+    a: 'blink',
+    status_message: "It's Alive!"
+};
+
+db.commitObject({
+        _id: object._id, //required
+        object: object,
+        rules: objectRules
+    },
+    function (err, chain) {
+        if (err) throw err;
+        console.log(JSON.stringify(chain, undefined, 2));
+
+        var chain_id = chain.chainId.toString();
+        // console.log(chain_id);
+    });
 
 
-    //builder examples
-    var FieldRules = require('./src/rules/FieldRules');
-    var fieldrules = new FieldRules.Builder()
-        .setType('string')
-        .setEditable(true)
-        .build();
-
-    console.log(fieldrules);
-
-    var ObjectRules = require('./src/rules/ObjectRules');
-
-    var objectrules = new ObjectRules.Builder()
-        .setSigned(true)
-        .setMaxUpdates(500)
-        .setFieldRule('a', fieldrules)
-        .build();
-
-    console.log(objectrules)
-
-    // console.time('GetObject');
-    /*db.getObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
+/*
+db.getObject("5b0e3c6d9391184e3e000001", function (err, object) {
         if (err) {
             console.error(err);
             return;
         }
-        console.timeEnd('GetObject');
-        console.log('Retrieved Object:\n' + JSON.stringify(object, undefined, 2));
-        // console.log('DONE!!!');
-    });*/
 
-
-    /*db.commitObjectIndex("5ad28b9d18c35e2b4c000001", function (err, object) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        // console.timeEnd('GetObject');
-        console.log('Stored Index Object:\n' + JSON.stringify(object, undefined, 2));
-        // console.log('DONE!!!');
-    });*/
-
+    console.log('Retrieved Object:\n' + JSON.stringify(object, undefined, 2));
+});
+*/
 
     /*var update = {
         $set: {
@@ -69,7 +68,7 @@ new FactomObjectDB({
         }
     };
 
-    db.commitObjectUpdate("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001",
+    db.commitObjectUpdate("5ad28b9d18c35e2b4c000001",
         update
         , function (err, entry) {
             if (err) throw err;
@@ -84,7 +83,7 @@ new FactomObjectDB({
             }
         };
 
-        db.commitObjectUpdate("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001",
+        db.commitObjectUpdate("5ad28b9d18c35e2b4c000001",
             update
             , function (err, entry) {
                 if (err) throw err;
@@ -95,31 +94,8 @@ new FactomObjectDB({
     return;*/
 
 
-    /*db.getChainMetaObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
-        if (err) throw err;
-        console.log('GOT META!');
-        console.log(JSON.stringify(object, undefined, 2));
-    });*/
-
-
-    /*    var ObjectId = require('objectid');
-
-        var object = {
-            _id: 'myuniqueid',
-            // add any JSON serializable object fields here!
-            status: true,
-            status_message: "It's Alive!"
-        };
-
-        db.commitObject({
-                db_id: 'factomdbtest:0.0.0',
-                object: object
-            },
-            function (err, chain) {
-                if (err) throw err;
-                console.log(JSON.stringify(chain, undefined, 2));
-
-                var chain_id = chain.chainId.toString();
-                console.log(chain_id);
-            });*/
-});
+/*db.getChainMetaObject("5ad28b9d18c35e2b4c000001", function (err, object) {
+    if (err) throw err;
+    console.log('GOT META!');
+    console.log(JSON.stringify(object, undefined, 2));
+});*/

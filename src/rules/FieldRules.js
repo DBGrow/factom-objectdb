@@ -3,7 +3,7 @@ var allRules = {
     editable: false, //can the value be edited
     deletable: false, //can it be deleted
     renameable: false, //can it be renamed
-    length: 100, //what is it's maximum length(bytes)?
+    length: 100, //what is it's maximum length of the string/array?
 };
 
 this.Builder = function Builder(rules) {
