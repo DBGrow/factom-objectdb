@@ -1,4 +1,4 @@
-var {FactomObjectDB} = require('factom-objectdb');
+var {FactomObjectDB} = require('./src/FactomObjectDB');
 var ObjectId = require('objectid');
 var crypto = require('crypto');
 
