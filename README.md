@@ -34,7 +34,7 @@ npm -i factom-objectdb
 
 ```javascript
 "dependencies": {
-    "factom-objectdb": "0.0.0",
+    "factom-objectdb": "0.0.1",
 }
 ```
 
