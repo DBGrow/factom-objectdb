@@ -1,100 +1,131 @@
 # factom-objectdb
-Object database implementation for the Factom protocol written in NodeJS.
+An library for the Factom Blockchain, written in NodeJS. Exposes basic CRU(D) operations for JSON encoded objects stored on Factom.
 
-# State of development
 
-This library is in active development, currently at alpha stage. Commits may contain breaking changes!
+
+The motivation for this library is to enable and demonstrate richer functionality on top of Factom's data-agnostic protocol. Distributed applications on Factom require a basic storage protocol to operate. `factom-objectdb` aims to achieve this by providing a framework for data validation and rules based on the cross platform JSON standard. 
+
+
 
 ## Prerequisites
 
-### Factom
-
 You must have the following to write objects using this library:
 
--  A funded public/private Entry Credit address
-- Access to the `factomd-api` and `walletd-api`
+-  A funded public or private Entry Credit address
+-  Access to the `factomd-api` (and`walletd-api` if you want to use a public EC address)
 
-The public EC address must remain funded to continue creating entries! You may use testnet addresses and servers.
+The EC address must remain funded to continue creating entries! You may use testnet addresses and servers.
 
 Reading stored objects is **free** and does not require an EC address.
 
-# Mechanism
 
-When a new object is inserted into a database, the library will create a new Chain with the first Entry being a metadata entry for the object.
 
-Updates and other events about the object will result in a new `Entry` being placed on the object's `Chain`, containing the hash of the new version the object or the update to the object itself.
+## Installation
+
+ Command Line:
+
+```javascript
+npm -i factom-objectdb
+```
+
+
+
+`package.json`
+
+```javascript
+"dependencies": {
+    "factom-objectdb": "0.0.0",
+}
+```
+
+
 
 # Examples
 
 ### Initialization
 
 ```javascript
-var {FactomObjectDB} = require('./src/FactomObjectDB');
+var {FactomObjectDB} = require('factom-objectdb');
+const ES = ;
 
-//get db object async
-new FactomObjectDB({
-    ec_address: FACTOM_EC, //public EC address
-    encrypt : true, //enable/disable encryption (default enabled)
-    private_key_path : undefined //Path to your private key to encrypt and decrypt entries. By default will be ./crypto/demo_private.pem unless you set encryption : false
-}, function (err, db) {
-    if (err) throw err;
-    
-    //paste an example from below here!
-})
-
-//or get db object sync
 var db = new FactomObjectDB({
-    factomd_host: FACTOMD_IP,
-    walletd_host: FACTOMD_IP,
-    ec_address: FACTOM_EC,
+    db_id: 'factomdbtest:0.0.1', //the ID of your database
+    factomparams: {host: '88.200.170.90'},  //testnet courtesy node IP for example
+    es_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //testnet courtesy private EC address for example
 });
 ```
 
 
 
-### Store an Object
+### Create an Object
 
-Store new object.
+Lets say we have an object we want to store:
 
 ```javascript
- var ObjectId = require('objectid');
+//an example object, a person in a database
 
-        var object = {
-            _id: new ObjectId(), //required
-            // add any JSON serializable object fields here!
-            status: true,
-            status_message: "It's Alive!"
-        };
-
-        db.commitObject({
-                db_id: 'factomdbtest:0.0.0',
-                object: object
-            },
-            function (err, chain) {
-                if (err) throw err;
-                console.log(chain);
-            });
+var joe = {
+    _id: '134e366520a6f93265eb',
+    name: 'Joe Testerson',
+    age: 30,
+    best_friends: []
+};
 ```
 
-Output:
+We can store this on Factom and update the object over time. To do so safely, we must define some rules for the object and it's fields to adhere to.
+
+
+
+#### Define Object & Field Rules
+
+The library allows placing various restrictions on how the objects you store can be updated. The current state of an object is determined by the library using these rules when retrieving the object from Factom.
+
+In this case, `Joe Testerson` is a user in a database. To facilitate that functionality, we should place some restrictions on what can be done with his data.
 
 ```javascript
-{
-  "txId": "886551468df23eea5563b9fcde09e92555081bd09e0a1ae1d61095aab03ad4b7",
-  "repeatedCommit": false,
-  "chainId": "c7364f0765e7305150ce69134e366520a6f93265eb5475f76d48f5cd9e921440",
-  "entryHash": "f0c108f54ccef72d4b207dd764db11ed2e1d7bf757398a09844e944d9b0e9d24"
-}
+var FieldRules = require('./src/rules/FieldRules');
+
+var ObjectRules = require('./src/rules/ObjectRules');
+declare object rules
+//
+var objectRules = new ObjectRules.Builder()
+    .setAddFields(false) //disable adding fields to Joe's object
+    .setDeleteFields(false) //disable deleting fields from to Joe's object
+    .setRenameFields(false) //disable renaming fields in Joe's object
+
+    //declare field rules:
+    .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark Joe's ID final, so it can never be changed
+    .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(true).build()) //mark Joe's name editable so he can change it later
+    .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setMin(0).setMax(100).build()) //Joes age is, updatable, but will be locked to non negative number <= 100
+    .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setMax(5).build()) //limit Joe's best friends to to 5 in count, non deletable
+    .build();
 ```
 
+See below for all Object and Field rules
 
 
-### Get an Object
 
-Get an object on DB `factomdbtest:0.0.0` with objectID `5ad28b9d18c35e2b4c000001`
+#### Store The Object
+
+Now that we've defined some rules we're ready to save the Object to Factom
 
 ```javascript
-db.getObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
+//commit the initial object and rules to Factom!
+db.commitObject(joe._id, joe, objectRules, function (err, chain) {
+    if (err) throw err;
+});
+```
+
+ It is important to note that creation and updates to objects take up until the next block to be reflected (up to 10 Minutes).
+
+
+
+### Read an Object
+
+Get Joe's object using his id: `5ad28b9d18c35e2b4c000001`
+
+```javascript
+db.getObject("134e366520a6f93265eb", function (err, object) {
         if (err) {
             console.error(err);
             return;
@@ -108,13 +139,10 @@ Output:
 ```javascript
 Retrieved Object:
 {
-  "_id": "5ad28b9d18c35e2b4c000001",
-  "status": true,
-  "status_message": "It's Alive!",
-  "test_field": "hello there!",
-  "errors": 99,
-  "friends": 0.2537180160835515,
-  "count": 23
+  "_id": "134e366520a6f93265eb",
+  "name": "Joe Testerson",
+  "age": 25,
+  "best_friends": []
 }
 ```
 
@@ -127,194 +155,214 @@ This library uses a [MongoDB inspired update syntax](https://docs.mongodb.com/ma
 Currently, these operators are supported:
 
 - `$set` : Set the value of a key in the object
-- `$unset` : Delete the key and value from an object
+- `$unset` : Delete the key from an object
 - `$rename` : Rename the key of an object
 - `$inc` : Increase the value of the key of an object by an amount
-- `$mul` : Multiply the value of the key of an object by an amount
+- `$mul` : Multiply the value of the key by an number
+- `$push` : Add a value to the end of an array
+- `$pop` : Remove a value from the end of an array
 
-These operators follow the same rules as their Mongodb counterparts.
 
-##### Example
 
-Update an object on DB `factomdbtest:0.0.0` with objectID `5ad28b9d18c35e2b4c000001` to set field `count` equal to `10`.
+Updates to Factom objects are subject to the object's Field and Object rules. Updates that do not meet the restrictions placed on the Object will be ignored when retrieving it next time. It is important to note that updates to objects take up until the next block to be reflected using `getObject`. Changes can take up to 10 Minutes to be reflected in the final retrieval of the object.
+
+
+
+Let's say Joe just had his 27th birthday. We want to `$set` his new age:
 
 ```javascript
-var update = {
+var update = { //increase Joe's age by 1
         $set: {
-            count: 10
+            age: 27
+        }
+ };
+
+db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
+	if (err) throw err;
+});
+```
+
+
+
+Lets say Joe just made a friend named Johan! We want to `$push` a friend to his best_friends array:
+
+```javascript
+var update = { //push a new friend to the best_friends array. Should be successful
+        $push: {
+            best_friends: {name: 'Yohan B', age: 30}
         }
 };
 
-db.commitObjectUpdate("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001",
-        update
-        , function (err, entry) {
-            if (err) throw err;
-            console.log('Committed entry with hash' + entry.entryHash.toString('hex'))
+db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
+	if (err) throw err;
 });
 ```
 
-Output:
+
+
+Lets say Joe fell into a black hole and has aged 70 years:
 
 ```javascript
-Retrieved Object:
-{
-  "_id": "5ad28b9d18c35e2b4c000001",
-  "status": true,
-  "status_message": "It's Alive!",
-  "test_field": "hello there!",
-  "errors": 99,
-  "friends": 0.2537180160835515,
-  "count": 23
-}
-```
-
-
-
-### Index An Object
-
-Get an object on DB `factomdbtest:0.0.0`'s metadata with objectID `5ad28b9d18c35e2b4c000001`
-
-```javascript
-db.commitObjectIndex("5ad28b9d18c35e2b4c000001", function (err, object) {
-            if (err) {
-                console.error(err);
-                return;
-            }
-            // console.timeEnd('GetObject');
-            console.log('Retrieved Object:\n' + JSON.stringify(object, undefined, 2));
-        });
-```
-
-Output:
-
-```javascript
-GOT META!
-{
-  "type": "meta",
-  "_id": "5ad28b9d18c35e2b4c000001",
-  "protocol_version": "0.0.0a",
-  "hashed": false,
-  "message": "'It's Alive!' --- This is beginning of an object's chain!",
-  "init_object": {
-    "_id": "5ad28b9d18c35e2b4c000001",
-    "status": true,
-    "status_message": "It's Alive!"
-  }
-}
-```
-
-
-
-
-
-### Get an Object Chain's Metadata
-
-Get an object on DB `factomdbtest:0.0.0`'s metadata with objectID `5ad28b9d18c35e2b4c000001`
-
-```javascript
- db.getChainMetaObject("factomdbtest:0.0.0", "5ad28b9d18c35e2b4c000001", function (err, object) {
-        if (err) throw err;
-        console.log('GOT META!');
-        console.log(JSON.stringify(object, undefined, 2));
-});
-```
-
-Output:
-
-```javascript
-GOT META!
-{
-  "type": "meta",
-  "_id": "5ad28b9d18c35e2b4c000001",
-  "protocol_version": "0.0.0a",
-  "hashed": false,
-  "message": "'It's Alive!' --- This is beginning of an object's chain!",
-  "init_object": {
-    "_id": "5ad28b9d18c35e2b4c000001",
-    "status": true,
-    "status_message": "It's Alive!"
-  }
-}
-```
-
-
-
-# Chain Structure
-
-Each object is represented as a chain of Entries.
-
-### Entry Content Construction
-
-`ExtIDS[0] = SHA256(db_id + object_id)`
-`content =Zipped, (and optionally encrypted) JSON metadata object`
-
-Object --> JSON String --> AES256 PK Encryption* --> DEFLATE compression (RFC 1951) --> content of Entry
-
- (* = conditional)
-
-Follow in reverse for Object construction from content
-
-### First Chain Entry
-
-Contains metadata about the chain including the first version of the complete object. If the chain is private (signed by PK) then the metadata and all the Entry content of the chain must be signed by the same PK to be interpreted as authentic.
-##### Metadata Structure
-
-```javascript
-{
-_id: params.object._id, //Unique ID of the object this chain tracks
-protocol_version: '0.0.0a', //Objectdb protocol version this object chain was initialized with
-hashed: false, //Whether the entries in this chain will be hashes of the complete object or updates.
-message: "'It's Alive!' --- This is beginning of an object's chain!",
-meta: undefined, //JSON Metadata from the user
-init_object: object //the object at the time of initialization
+var update = {
+        $inc: {  //Increase Joe's age by 70!
+            age: 70
+        }
 };
+
+db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
+	if (err) throw err;
+    
+});
 ```
 
-### Additional Chain Entries
 
-Think of additional chain entries kind of like commits to a Git repo!
 
-They represent checkpoints in time where updates and events happened.
-
-##### Structure
-
-`ExtId[0]` =  Unix Epoch Converted to String of when this entry was made
-
-`content` = zipped (Optionally incrypted) content of the entry
-
-### Entry Content
-
-### Updates
-
-Update entries represent an update to the object
+Joe is now 97 years of age, and sadly all his friends are dead. Better get rid of Johan :(
 
 ```javascript
+var update = { //pull a single friend from the best_friends array
+        $pop: {
+            best_friends: {}
+        }
+};
+
+db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
+	if (err) throw err;
+});
+```
+
+
+
+Lets say Joe keeps falling for another 10 years:
+
+```javascript
+var update = {
+        $inc: {  //Increase Joe's age by 10!
+            age: 10
+        }
+};
+
+db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
+	if (err) throw err;
+});
+```
+
+But now we have a problem! Increasing Joe's age by 10 would make him 107, which is over the maximum value we set for his age of 100. This update will be ignored the next time Joe's object is retrieved.
+
+
+
+### Get An Object's Metadata
+
+Let's say we want to get info on Joe's object, which is held in his first entry on Factom:
+
+```javascript
+db.getObjectMetadata("134e366520a6f93265eb", function (err, object) {
+    if (err) throw err;
+    console.log('GOT META!');
+    console.log(JSON.stringify(object, undefined, 2));
+});
+```
+
+
+
+The output illustrates how the library stores and defines rules for the Object:
+
+
+
+```javascript
+GOT META!
 {
-    $set: {
-        count: count
+  "type": "meta",
+  "protocol_version": "0.0.1",
+  "timestamp": 1530488933194,
+  "object": {
+    "_id": "5b396865cbf4239c10000001",
+    "name": "Joe Testerson",
+    "age": 5,
+    "best_friends": []
+  },
+  "rules": {
+    "editfields": true,
+    "addfields": false,
+    "deletefields": false,
+    "renamefields": false,
+    "fields": {
+      "_id": {
+        "editable": false,
+        "deletable": true,
+        "renameable": true,
+        "type": "string"
+      },
+      "name": {
+        "editable": false,
+        "deletable": true,
+        "renameable": true,
+        "type": "string"
+      },
+      "age": {
+        "editable": true,
+        "deletable": false,
+        "renameable": true,
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      "best_friends": {
+        "editable": true,
+        "deletable": false,
+        "renameable": true,
+        "type": "array",
+        "max": 5
+      }
     }
+  }
 }
+
 ```
 
-### Indexes
 
-Index entries represent a point in time snapshot of the object
+
+## Security & Permissions
+
+By default objects created using this library are publicly viewable and editable. This library offers several approaches to keeping objects permissioned and secure:
+
+
+
+### AES Encryption
+
+Objects and updates written using this library can be encrypted using AES256. Doing so results in object storage that can only be read and updated by the holder of the private encryption key.
+
+To use AES, specify your key during initialization:
 
 ```javascript
-{
-    type: 'index',
-    index_object: { //the complete copy of the object at ExtID[0] Unix epoch
-  		"_id": "5ad28b9d18c35e2b4c000001",
-  		"status": true,
-  		"status_message": "It's Alive!",
-  		"test_field": "hello there!",
-  		"errors": 99,
-  		"friends": 0.2537180160835515,
-  		"count": 23
-	}
-}
+var db = new FactomObjectDB({
+    //... other options
+    private_key : 'my awesome passphrase' //private key string or buffer
+});
 ```
 
 
 
-​    
+### Cryptographic Signatures (Coming Soon)
+
+Have an object you want to be publicly readable, but only want to allow updates from authorized parties? Each update entry can be signed using asymmetric encryption keys 
+
+
+
+### Obfuscation
+
+The library uses deflate compression to shrink the data that is put into Factom. This means that the entries this library creates are not human readable. This will be made optional in the near future
+
+
+
+<u>Please note that once an object initialized, AES and compression cannot be changed. Attempting to read an object using incorrect encryption and compression settings will result in an error.</u>
+
+
+
+## Todo
+
+- Better examples for field and object rules
+- Full object and field rules table with descriptions
+- Signature based validation for updates
+- Make deflate compression optional for human readability
+- Unit testing for many, many, many test cases

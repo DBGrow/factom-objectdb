@@ -1,28 +1,15 @@
 var allfields = {
     addfields: false, //can new fields be added to this object
-    lockat: 1527211591, //this object will be considered locked at this timestamp. No further entries will be valid
-    maxupdates: 200, //this object will be considered locked after x number of updates
+    deletefields: false, //fields be removed from this object
+    editfields: false, //fields be edited in this object
+    renamefields: false, //fields be renamed in this object
+    maxupdates: 200, //this object will be considered locked after x number of valid updates
 
     //encryption
     signed: false, //require updates to this chain to be signed
     keys: ['pubkey1'],
 
-    fields: {
-        a: { //field name
-            type: 'string', //type of the field
-            editable: false, //can the value be edited
-            delete: false, //can it be deleted
-            rename: false, //can it be renamed
-            length: 100, //what is it's maximum length(bytes)?
-        },
-        b: {
-            type: 'array',
-            editable: false,
-            delete: false,
-            rename: false,
-            length: 10, //what is it's maximum length(elements)?
-        }
-    }
+    fields: {}
 };
 
 this.Builder = function Builder(rules) {
@@ -34,21 +21,43 @@ this.Builder = function Builder(rules) {
 
     //pull from rules object if available
     if (rules) {
-        self.rules.addfields = rules.addfields ? rules.addfields : undefined;
-        self.rules.lockat = rules.lockat ? rules.lockat : undefined;
+
+        self.rules.editfields = rules.editfields ? rules.editfields : true;
+        self.rules.addfields = rules.addfields ? rules.addfields : true;
+        self.rules.deletefields = rules.deletefields ? rules.deletefields : true;
+        self.rules.renamefields = rules.renamefields ? rules.renamefields : true;
+        self.rules.fields = rules.fields ? rules.fields : undefined;
+
         self.rules.maxupdates = rules.maxupdates ? rules.maxupdates : undefined;
         self.rules.signed = rules.signed ? rules.signed : undefined;
         self.rules.keys = rules.keys ? rules.keys : undefined;
-        self.rules.fields = rules.fields ? rules.fields : undefined;
+
+    } else {
+        //set defaults
+
+        self.rules.editfields = true;
+        self.rules.addfields = true;
+        self.rules.deletefields = true;
+        self.rules.renamefields = true;
     }
+
+    this.setEditFields = function (editfields) {
+        self.rules.editfields = editfields;
+        return this;
+    };
 
     this.setAddFields = function (addfields) {
         self.rules.addfields = addfields;
         return this;
     };
 
-    this.setLockAt = function (lockat) {
-        self.rules.lockat = lockat;
+    this.setDeleteFields = function (deletefields) {
+        self.rules.deletefields = deletefields;
+        return this;
+    };
+
+    this.setRenameFields = function (renamefields) {
+        self.rules.renamefields = renamefields;
         return this;
     };
 
@@ -61,11 +70,12 @@ this.Builder = function Builder(rules) {
         self.rules.signed = signed;
         return this;
     };
+
     this.setKeys = function (keys) {
         self.rules.keys = keys;
         return this;
     };
-    this.setFieldRule = function (field, rule) {
+    this.addFieldRule = function (field, rule) {
         //validate fields and throw
         if (!self.rules.fields) self.rules.fields = {};
         self.rules.fields[field] = rule;
@@ -76,21 +86,25 @@ this.Builder = function Builder(rules) {
         return self.rules
     };
 
-    var allRulesAndTypes = {
-        addfields: 'boolean',
-        lockat: 'number',
-        maxupdates: 'number',
-        signed: 'boolean',
-        keys: 'array',
-        fields: 'object'
-    };
-
     //check types of rules & validate
     Object.keys(this.rules).forEach(function (key, index) {
         if (allfields[key] && rules[key] != typeof allfields[key]) throw new Error("Type mismatch for key " + key);
     });
 
     return this;
+};
+
+this.validate = function (object, rules) {
+//check if all fields defined in rules are in object
+    for (var key in rules.fields) {
+        if (rules.fields.hasOwnProperty(key)) {
+            if (!object[key]) {
+                console.error('Object did not have key specified in rules: ' + key);
+                return false;
+            }
+        }
+    }
+    return true;
 };
 
 module.exports = this;

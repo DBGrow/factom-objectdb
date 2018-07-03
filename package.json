@@ -2,7 +2,7 @@
   "name": "factom-objectdb",
   "version": "0.0.0",
   "description": "Object database implementation for the Factom protocol",
-  "main": "index.js",
+  "main": "./src/FactomObject.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/drkatz/factom-objectdb.git"
