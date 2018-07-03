@@ -1,4 +1,4 @@
-var {FactomObjectDB} = require('./src/FactomObjectDB');
+var {FactomObjectDB} = require('factom-objectdb');
 var ObjectId = require('objectid');
 var crypto = require('crypto');
 
@@ -24,7 +24,6 @@ var db = new FactomObjectDB({
 });
 
 //build an example object, a person in a database
-/*
 
 var object = {
     _id: new ObjectId(),
@@ -67,7 +66,6 @@ db.commitObject(object._id, object, objectRules, function (err, chain) {
         throw err;
     });
 });
-*/
 
 //get a test object
 db.getObject(testObjectId, function (err, object) {
@@ -81,17 +79,16 @@ db.getObject(testObjectId, function (err, object) {
     }, 2000);
 
 });
-return;
 
 //get the metadata for a test object
-/*db.getObjectMetadata(testObjectId, function (err, object) {
+db.getObjectMetadata(testObjectId, function (err, object) {
     if (err) {
         console.error(err);
         return;
     }
 
     console.log('Retrieved Object Metadata:\n' + JSON.stringify(object, undefined, 2));
-});*/
+});
 
 var updates = [
     { //this is an invalid update since _id is marked as not editable
