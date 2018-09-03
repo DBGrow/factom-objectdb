@@ -1,6 +1,6 @@
 {
   "name": "factom-objectdb",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Object database implementation for the Factom protocol",
   "repository": {
     "type": "git",
