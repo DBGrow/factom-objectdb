@@ -940,7 +940,6 @@ describe('ObjectDB Tests', async function () {
                     age: 3
                 }
             };
-
             let result = await db.commitObjectUpdate(testObjectId, update);
         });
 
