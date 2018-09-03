@@ -1,32 +1,32 @@
 var ObjectId = require('objectid');
+var ObjectRules = require('../src/rules/ObjectRules');
 
-
-function FactomObject(metaEntry) {
+function FactomObject(metadata) {
     const self = this;
 
     var updates = 0;
 
-    if (!metaEntry) self.object = {};
-    else self.metaEntry = metaEntry;
+    if (!metadata) self.object = {};
+    else self.metadata = metadata;
 
     //evaluate object for stringifyability
 
-    const rules = metaEntry.rules ? metaEntry.rules : {};
+    const rules = metadata.rules ? metadata.rules : new ObjectRules.Builder().build();
 
-    const timestamp = metaEntry.timestamp;
+    const timestamp = metadata.timestamp;
 
     const fieldRules = rules.fields;
 
-    self.object = metaEntry.object;
+    self.object = metadata.object;
 
     self.get = function () {
         return self.object;
     };
 
-    self.applyUpdate = function (updateEntry, callback) {
+    self.applyUpdate = function (updateEntry) {
         //validate updateEntry
 
-        var update = updateEntry.update;
+        const update = updateEntry.update;
         //check for safety:
 
         //update entry needs to have certain fields
@@ -36,165 +36,110 @@ function FactomObject(metaEntry) {
         //handle signing & crypto verification
 
         //check for field editability
-        if (!rules.editfields) {
-            if (callback) callback(new Error("Ignoring Update: The object does not allow editing of it's fields"));
-            return;
-        }
+        if (!rules.editfields) throw new Error("Ignoring Update: The object does not allow editing of it's fields");
 
         //check for maxupdates
-        if (rules.maxupdates && rules.maxupdates == updates) {
-            if (callback) callback(new Error('Ignoring Update: The object has hit its update limit of ' + rules.maxupdates));
-            return;
+        if (rules.maxupdates && rules.maxupdates == updates) throw new Error('Ignoring Update: The object has hit its update limit of ' + rules.maxupdates);
+
+        //for every operation and key/value in the update:
+        //check if field is editable
+        //check for duplicate operations on the same field
+        for (let op in update) {
+            if (update.hasOwnProperty(op)) {
+                let fields_values = update[op];
+                for (let key in fields_values) {
+                    if (fields_values.hasOwnProperty(key)) {
+                        if (fieldRules && fieldRules[key]) {
+                            if (!fieldRules[key].editable) throw new Error('Field ' + key + ' is not editable')
+                        }
+                    }
+                }
+            }
         }
 
-        //check for duplicate operations on the same field
+        let objectCopy = Object.assign({}, self.object);
 
-        for (var op in update) { //needs to be async
+
+        for (let op in update) { //needs to be async
             if (update.hasOwnProperty(op)) {
                 // process the modification of the object
-                var fields_values = update[op];
+                let fields_values = update[op];
                 switch (op) {
                     case '$inc': {
-                        /*{
-                           $inc:{
-                               fruit_count : 10
-                           }
-                       }*/
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
 
                             if (fields_values.hasOwnProperty(key)) {
 
-                                //key = fruit_count
-                                //fields_values[key] = 10
+                                //key does not exist/has an inappropriate type
+                                if (!objectCopy[key]) throw new Error('Ignoring Update: Cannot increment a field that does not exist: ' + key);
 
-                                //gtfo if the key does not exist/has an inappropriate type
-                                if (!self.object[key]) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot increment a field that does not exist: ' + key));
-                                    continue;
-                                }
+                                if (typeof objectCopy[key] !== 'number') throw new Error('Ignoring Update: Cannot increment a field is not a number: ' + key);
 
-                                if (typeof self.object[key] !== 'number') {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot increment a field is not a number: ' + key));
-                                    continue;
-                                }
-
-                                if (typeof fields_values[key] !== 'number') {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot increment a field with a value that is not a number: ' + fields_values[key]));
-                                    continue;
-                                }
+                                if (typeof fields_values[key] !== 'number') throw new Error('Ignoring Update: Cannot increment a field with a value that is not a number: ' + fields_values[key]);
 
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not editable'));
-                                        continue;
-                                    }
-
+                                if (fieldRules && fieldRules[key]) {
                                     //check min value
-                                    if (fieldRules[key].min && fieldRules[key].min > self.object[key] + fields_values[key]) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' under its minimum value ' + fieldRules[key].min));
-                                        continue
-                                    }
+                                    if (fieldRules[key].min !== undefined && fieldRules[key].min > objectCopy[key] + fields_values[key]) throw new Error('Ignoring Update: Update would push ' + key + ' under its minimum value ' + fieldRules[key].min);
 
                                     //check max value
-                                    if (fieldRules[key].max && fieldRules[key].max < self.object[key] + fields_values[key]) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' over its maximum value ' + fieldRules[key].max));
-                                        continue;
-                                    }
+                                    if (fieldRules[key].max !== undefined && fieldRules[key].max < objectCopy[key] + fields_values[key]) throw new Error('Ignoring Update: Update would push ' + key + ' over its maximum value ' + fieldRules[key].max);
                                 }
 
-                                self.object[key] += fields_values[key]; //set the the value of the new field
+                                objectCopy[key] += fields_values[key]; //set the the value of the new field
                             }
                         }
                         break;
                     }
 
-                    //multiply the field
                     case '$mul': {
-                        /*{
-                            $mul:{
-                                fruit_count : 10
-                            }
-                        }*/
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
                             if (fields_values.hasOwnProperty(key)) {
 
                                 //key = fruit_count
                                 //fields_values[key] = 10
                                 //gtfo if the key does not exist/has no value
-                                if (!self.object[key]) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot multiply a field that does not exist: ' + key));
-                                    continue;
-                                }
 
-                                if (typeof self.object[key] !== 'number') {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot multiply a field that is not a number: ' + key));
-                                    continue;
-                                }
+                                if (!objectCopy[key]) throw new Error('Ignoring Update: Cannot multiply a field that does not exist: ' + key);
 
-                                if (typeof fields_values[key] !== 'number') {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot multiply a field with a value that is not a number: ' + fields_values[key]));
-                                    continue;
-                                }
+                                if (typeof objectCopy[key] !== 'number') throw new Error('Ignoring Update: Cannot multiply a field that is not a number: ' + key);
 
+                                if (typeof fields_values[key] !== 'number') throw new Error('Ignoring Update: Cannot multiply a field with a value that is not a number: ' + fields_values[key]);
 
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not editable'));
-                                        continue;
-                                    }
-
+                                if (fieldRules && fieldRules[key]) {
                                     //check min value
-                                    if (fieldRules[key].min && fieldRules[key].min > self.object[key] * fields_values[key]) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' under its minimum value ' + fieldRules[key].min));
-                                        continue;
-                                    }
+                                    if (fieldRules[key].min !== undefined && fieldRules[key].min > objectCopy[key] * fields_values[key]) throw new Error('Ignoring Update: Update would push ' + key + ' under its minimum value ' + fieldRules[key].min);
 
                                     //check max value
-                                    if (fieldRules[key].max && fieldRules[key].max < self.object[key] * fields_values[key]) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' over its maximum value ' + fieldRules[key].max));
-                                        continue;
-                                    }
+                                    if (fieldRules[key].max !== undefined && fieldRules[key].max < objectCopy[key] * fields_values[key]) throw new Error('Ignoring Update: Update would push ' + key + ' over its maximum value ' + fieldRules[key].max);
                                 }
-
-                                self.object[key] *= fields_values[key]; //set the the value of the new field
+                                objectCopy[key] *= fields_values[key]; //set the the value of the new field
                             }
                         }
                         break;
                     }
 
                     case '$rename': {
-                        /*{
-                            $rename:{fruit:'orange'}
-                        }*/
-
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
                             if (fields_values.hasOwnProperty(key)) {
                                 //key = fruit
                                 //fields_values[key] = 'orange'
 
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not editable'));
-                                        continue;
-                                    }
-
-                                    if (!fieldRules[key].renameable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not renameable'));
-                                        continue;
-                                    }
+                                if (fieldRules && fieldRules[key]) {
+                                    if (!fieldRules[key].renameable) throw new Error('Ignoring Update: Field ' + key + ' is not renameable');
+                                    // if (!fieldRules[key].editable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
+                                    if (!fieldRules[key].deletable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
                                 }
 
                                 //gtfo if the key does not exist/has no value
-                                if (!self.object[key]) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot rename a field that does not exist: ' + key));
-                                    continue;
-                                }
+                                if (!objectCopy[key]) throw new Error('Ignoring Update: Cannot rename a field that does not exist: ' + key);
 
-                                self.object[fields_values[key]] = self.object[key]; //set the the value of the new field from old
-                                delete self.object[key]; //delete the old field
+                                if (typeof fields_values[key] !== 'string') throw new Error('Ignoring Update: Value to rename field to was not a string')
+
+                                objectCopy[fields_values[key]] = objectCopy[key]; //set the the value of the new field from old
+                                delete objectCopy[key]; //delete the old field
                             }
                         }
                         break;
@@ -202,66 +147,51 @@ function FactomObject(metaEntry) {
 
                     //Operators that don't require checking variable state
                     case '$set': {
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
                             if (fields_values.hasOwnProperty(key)) {
 
+                                if (fields_values[key] === undefined || fields_values[key] === null) throw new Error('Ignoring Update: $set does not support undefined or null. Please use $unset');
+
                                 //check if add fields is false and trying to add new field
-                                if (!rules.addfields && !self.object[key]) {
-                                    if (callback) callback(new Error('Ignoring Update: Field ' + key + ' cannot be added as a field'));
-                                    continue;
-                                }
+                                if (!rules.addfields && !objectCopy[key]) throw new Error('Ignoring Update: Field ' + key + ' cannot be added as a field');
 
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not editable. Ignoring update'));
-                                        continue;
-                                    }
+                                if (fieldRules && fieldRules[key]) {
+
+                                    //check if field is editable
+                                    // if (!fieldRules[key].editable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
 
                                     //check if field is bound by type
                                     if (fieldRules[key].type) {
 
                                         //if the field isn't supposed to be an array, compare typof
-                                        if (fieldRules[key].type != typeof fields_values[key] && fieldRules[key].type != 'array') {
-                                            if (callback) callback(new Error('Ignoring Update: Field ' + key + ' must be of type ' + fieldRules[key].type));
-                                            continue;
-                                        } else if (!Array.isArray(fields_values[key])) { //otherwise check if the new value isn't an array
-                                            if (callback) callback(new Error('Ignoring Update: Field ' + key + ' must be of type ' + fieldRules[key].type));
-                                            continue;
-                                        }
-
-
+                                        if (fieldRules[key].type !== typeof fields_values[key] && fieldRules[key].type != 'array') throw new Error('Ignoring Update: Field ' + key + ' must be of type ' + fieldRules[key].type);
+                                        else if (!Array.isArray(fields_values[key])) throw new Error('Ignoring Update: Field ' + key + ' must be of type ' + fieldRules[key].type); //otherwise check if the new value isn't an array
                                     }
 
                                     //check min value
-                                    if (fieldRules[key].min && fieldRules[key].min > fields_values[key]) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' under its minimum value ' + fieldRules[key].min));
-                                        continue
-                                    }
+                                    if (fieldRules[key].min !== undefined && fieldRules[key].min > fields_values[key]) throw new Error('Ignoring Update: Update would push ' + key + ' under its minimum value ' + fieldRules[key].min);
 
                                     //check max value
-                                    if (fieldRules[key].max && fieldRules[key].max < fields_values[key]) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' over its maximum value ' + fieldRules[key].max));
-                                        continue;
-                                    }
+                                    if (fieldRules[key].max !== undefined && fieldRules[key].max < fields_values[key]) throw new Error('Ignoring Update: Update would push ' + key + ' over its maximum value ' + fieldRules[key].max);
                                 }
 
-                                self.object[key] = fields_values[key]; //set the value
+                                objectCopy[key] = fields_values[key]; //set the value
                             }
                         }
                         break;
                     }
+
                     case '$unset': {
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
                             if (fields_values.hasOwnProperty(key)) {
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
+                                if (fieldRules && fieldRules[key]) {
+                                    // if (!fieldRules[key].editable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
                                     if (!fieldRules[key].deletable) throw new Error('Ignoring Update: Field ' + key + ' is not deletable');
-                                    continue;
                                 }
 
-                                delete self.object[key] //unset the value
+                                delete objectCopy[key] //unset the value
                             }
                         }
                         break;
@@ -269,42 +199,25 @@ function FactomObject(metaEntry) {
 
                     //array methods, simple for now
                     case '$push': {
-                        /*{
-                            $mul:{
-                                fruit_count : 10
-                            }
-                        }*/
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
                             if (fields_values.hasOwnProperty(key)) {
 
                                 //key = fruit_count
                                 //fields_values[key] = [1,2,3]
                                 //gtfo if the key does not exist/has no value
-                                if (!self.object[key]) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot push onto a field that does not exist: ' + key));
-                                    continue;
-                                }
+                                if (!objectCopy[key]) throw new Error('Ignoring Update: Cannot push onto a field that does not exist: ' + key);
 
-                                if (!Array.isArray(self.object[key])) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot push onto a field that is not an array : ' + key));
-                                    continue;
-                                }
+                                if (!Array.isArray(objectCopy[key])) throw new Error('Ignoring Update: Cannot push onto a field that is not an array : ' + key);
 
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not editable'));
-                                        continue;
-                                    }
+                                if (fieldRules && fieldRules[key]) {
+                                    // if (!fieldRules[key].editable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
 
                                     //check max value
-                                    if (fieldRules[key].max && fieldRules[key].max < self.object[key].length + 1) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' over its maximum element count ' + fieldRules[key].max));
-                                        continue;
-                                    }
+                                    if (fieldRules[key].max !== undefined && fieldRules[key].max < objectCopy[key].length + 1) throw new Error('Ignoring Update: Update would push ' + key + ' over its maximum element count ' + fieldRules[key].max);
                                 }
 
-                                self.object[key].push(fields_values[key]); //push the new element onto the array
+                                objectCopy[key].push(fields_values[key]); //push the new element onto the array
                             }
                         }
                         break;
@@ -312,78 +225,40 @@ function FactomObject(metaEntry) {
 
                     //array methods, simple for now
                     case '$pop': {
-                        /*{
-                            $mul:{
-                                fruit_count : 10
-                            }
-                        }*/
-                        for (var key in fields_values) {
+                        for (let key in fields_values) {
                             if (fields_values.hasOwnProperty(key)) {
 
                                 //key = fruit_count
                                 //fields_values[key] = [1,2,3]
                                 //gtfo if the key does not exist/has no value
-                                if (!self.object[key]) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot pop from a field that does not exist: ' + key));
-                                    continue;
-                                }
+                                if (!objectCopy[key]) throw new Error('Ignoring Update: Cannot pop from a field that does not exist: ' + key);
 
-                                if (!Array.isArray(self.object[key])) {
-                                    if (callback) callback(new Error('Ignoring Update: Cannot pop from a field that is not an array : ' + key));
-                                    continue;
-                                }
+                                if (!Array.isArray(objectCopy[key])) throw new Error('Ignoring Update: Cannot pop from a field that is not an array : ' + key);
 
                                 //check rules for this field
-                                if (fieldRules[key]) {
-                                    if (!fieldRules[key].editable) {
-                                        if (callback) callback(new Error('Ignoring Update: Field ' + key + ' is not editable'));
-                                        continue;
-                                    }
-
-                                    //check min value
-                                    if (fieldRules[key].min && fieldRules[key].min > self.object[key].length - 1) {
-                                        if (callback) callback(new Error('Ignoring Update: Update would push ' + key + ' under its minumum element count ' + fieldRules[key].max));
-                                        continue;
-                                    }
+                                if (fieldRules && fieldRules[key]) {
+                                    // if (!fieldRules[key].editable) throw new Error('Ignoring Update: Field ' + key + ' is not editable');
                                 }
 
-                                self.object[key].pop(); //pop an element off the array
+                                objectCopy[key].pop(); //pop an element off the array
                             }
                         }
                         break;
                     }
 
                     default: {
-                        console.error('Ignoring Unknown Update! Object: ' + JSON.stringify(update))
+                        throw new Error('Ignoring Unknown Update: ' + JSON.stringify(update))
                     }
                 }
             }
         }
+
+        //we've successfully applied the update
+        self.object = objectCopy;
         updates++;
 
         return self;
     };
-
-    self.applyUpdates = function applyUpdates(updates, callback) {
-        try {
-            updates.forEach(function (update) { //needs to be async
-                self.applyUpdate(update, function (err) {
-                    if (err) console.error(err);
-                });
-            });
-
-            if (callback) callback(undefined, self);
-            return self;
-        } catch (err) {
-            if (callback) {
-                callback(err);
-                return self;
-            } else throw err;
-        }
-    };
-    return self;
 }
 
-module.exports = {
-    FactomObject: FactomObject
-};
+module.exports.FactomObject = FactomObject;

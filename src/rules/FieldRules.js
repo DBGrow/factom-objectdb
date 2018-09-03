@@ -15,49 +15,46 @@ this.Builder = function Builder(rules) {
     this.rules = {};
 
     //pull from rules object if available
-    if (rules) {
-        self.rules.type = rules.type ? rules.type : undefined;
 
-        self.rules.editable = rules.editable ? true : false;
-        self.rules.deletable = rules.deletable ? true : false;
-        self.rules.renameable = rules.renameable ? true : false;
-
-        self.rules.min = rules.min ? rules.min : undefined;
-        self.rules.max = rules.max ? rules.max : undefined;
-    } else { //set defaults
-
-        self.rules.editable = true;
-        self.rules.deletable = true;
-        self.rules.renameable = true;
-    }
+    //defaults
+    self.rules.editable = true;
+    self.rules.deletable = true;
+    self.rules.renameable = true;
 
     this.setType = function (type) {
+        if (!['boolean', 'number', 'string', 'object', 'array'].includes(type)) throw new Error('Type must be [\'boolean\', \'number\', \'string\', \'object\', \'array\']');
         self.rules.type = type;
         return this;
     };
 
     this.setEditable = function (editable) {
+        if (typeof editable !== 'boolean') throw new Error('Expected Boolean');
         self.rules.editable = editable;
         return this;
     };
 
     this.setDeletable = function (deletable) {
+        if (typeof deletable !== 'boolean') throw new Error('Expected Boolean');
         self.rules.deletable = deletable;
         return this;
     };
 
     this.setRenameable = function (renameble) {
+        if (typeof renameble !== 'boolean') throw new Error('Expected Boolean');
         self.rules.renameable = renameble;
         return this;
     };
 
     this.setMin = function (min) {
+        if (typeof min !== 'number') throw new Error('Expected Number');
         //validate fields and throw
         self.rules.min = min;
         return this;
     };
 
     this.setMax = function (max) {
+        if (typeof max !== 'number') throw new Error('Expected Number');
+
         //validate fields and throw
         self.rules.max = max;
         return this;

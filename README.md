@@ -1,26 +1,62 @@
+![](https://png.icons8.com/ultraviolet/200/000000/sugar-cubes.png)
+
 # factom-objectdb
-An library for the Factom Blockchain, written in NodeJS. Exposes basic CRU(D) operations for JSON encoded objects stored on Factom.
+
+A blockchain object database implemented in NodeJS, built on Factom -  all for a fraction of the cost of competitors.
+
+This library enables basic, immutable CRU(~~D~~) database operations for JSON objects, featuring a familiar MongoDB inspired update syntax.
 
 
 
-The motivation for this library is to enable and demonstrate richer functionality on top of Factom's data-agnostic protocol. Distributed applications on Factom require a basic storage protocol to operate. `factom-objectdb` aims to achieve this by providing a framework for data validation and rules based on the cross platform JSON standard. 
+[TOC]
+
+# Motivation
+
+Applications deserve easy, affordable, immutable data storage. Factom-objectdb wraps the required functionality into an easy to use package based on a universal structured data standard (JSON) and language (NodeJS), all for a fraction of the cost of competitors.
 
 
 
-## Prerequisites
+### Cost Reduction
 
-You must have the following to write objects using this library:
+The price performance of immutable data solutions on Factom, like factom-objectdb, blow competitors out of the water on a $ per KB basis:
 
--  A funded public or private Entry Credit address
--  Access to the `factomd-api` (and`walletd-api` if you want to use a public EC address)
+|          | Cost/KB | % of Factom’s Cost |
+| -------- | ------- | ------------------ |
+| Factom   | $0.001  | -                  |
+| Ethereum | $0.13   | 13000% (13x)       |
+| NEO      | $0.22   | 2.47 M% (24800x)   |
 
-The EC address must remain funded to continue creating entries! You may use testnet addresses and servers.
+
+
+### Ease Of Use
+
+factom-objectdb does not require any knowledge of or integration with contract languages like Solidity. It is a language agnostic protocol can be implemented in any programming language. Anyone who can read JSON can understand objectdb.
+
+
+
+### No Exchanges or Securities
+
+Entering data costs [Entry Credits](/), a fixed value, non tradable token that can be purchased by anyone, anywhere. Entry credits are not securities, cost $0.001 USD each, and enable the entry of 1 KB of data permanently into the blockchain.
+
+
+
+
+
+# Prerequisites
+
+You must have the following to write objects & updates using this library:
+
+-  Entry Credits (Buy [Here](/) or [Here](/). Or free on the [testnet faucet](/))
+
+The EC address must remain funded to continue creating entries!
 
 Reading stored objects is **free** and does not require an EC address.
 
 
 
-## Installation
+
+
+# Installation
 
  Command Line:
 
@@ -28,21 +64,23 @@ Reading stored objects is **free** and does not require an EC address.
 npm -i factom-objectdb
 ```
 
+**or**
 
-
-`package.json`
+In `package.json`:
 
 ```javascript
 "dependencies": {
-    "factom-objectdb": "0.0.1",
+    "factom-objectdb": "0.0.2",
 }
 ```
 
 
 
+
+
 # Examples
 
-### Initialization
+## Initialization
 
 ```javascript
 var {FactomObjectDB} = require('factom-objectdb');
@@ -50,14 +88,14 @@ const ES = ;
 
 var db = new FactomObjectDB({
     db_id: 'factomdbtest:0.0.1', //the ID of your database
-    factomparams: {host: '88.200.170.90'},  //testnet courtesy node IP for example
+    factom: {host: '88.200.170.90'},  //testnet courtesy node IP for example
     es_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //testnet courtesy private EC address for example
 });
 ```
 
 
 
-### Create an Object
+## Store an Object
 
 Lets say we have an object we want to store:
 
@@ -72,15 +110,35 @@ var joe = {
 };
 ```
 
-We can store this on Factom and update the object over time. To do so safely, we must define some rules for the object and it's fields to adhere to.
+
+
+Saving the object forever is as easy as:
+
+```javascript
+//save the initial object to Factom!
+
+//using async/await
+let storedObject = await db.commitObject(joe._id, joe);
+
+//or using promises
+db.commitObject(joe._id, joe).then(function(storedObject){
+    
+}).catch(function(err){
+    throw err;
+})
+```
+
+ It is important to note that creation and updates to objects take up until the next block to be reflected (up to 10 Minutes).
 
 
 
-#### Define Object & Field Rules
+### Object & Field Rules
 
-The library allows placing various restrictions on how the objects you store can be updated. The current state of an object is determined by the library using these rules when retrieving the object from Factom.
+The library allows placing restrictions on how the objects you store can be updated. The current state of an object is determined by the library using these rules when retrieving the object from Factom.
 
-In this case, `Joe Testerson` is a user in a database. To facilitate that functionality, we should place some restrictions on what can be done with his data.
+In this case, `Joe Testerson` is a user in a database. To facilitate that functionality, we should place some restrictions on how his object and it's fields can be updated:
+
+
 
 ```javascript
 var FieldRules = require('./src/rules/FieldRules');
@@ -101,37 +159,25 @@ var objectRules = new ObjectRules.Builder()
     .build();
 ```
 
-See below for all Object and Field rules
 
 
-
-#### Store The Object
-
-Now that we've defined some rules we're ready to save the Object to Factom
+Set the field rules for the object at the same time you commit it:
 
 ```javascript
 //commit the initial object and rules to Factom!
-db.commitObject(joe._id, joe, objectRules, function (err, chain) {
-    if (err) throw err;
-});
+let storedObject = db.commitObject(joe._id, joe);
 ```
 
- It is important to note that creation and updates to objects take up until the next block to be reflected (up to 10 Minutes).
 
 
 
-### Read an Object
+
+## Get an Object
 
 Get Joe's object using his id: `5ad28b9d18c35e2b4c000001`
 
 ```javascript
-db.getObject("134e366520a6f93265eb", function (err, object) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        console.log('Retrieved Object:\n' + JSON.stringify(object, undefined, 2));
-});
+let joe = await db.getObject("134e366520a6f93265eb");
 ```
 
 Output:
@@ -148,7 +194,9 @@ Retrieved Object:
 
 
 
-### Update an Object
+
+
+## Update an Object
 
 This library uses a [MongoDB inspired update syntax](https://docs.mongodb.com/manual/reference/operator/update/#id1). 
 
@@ -177,9 +225,7 @@ var update = { //increase Joe's age by 1
         }
  };
 
-db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
-	if (err) throw err;
-});
+await db.commitObjectUpdate("134e366520a6f93265eb", update);
 ```
 
 
@@ -193,9 +239,7 @@ var update = { //push a new friend to the best_friends array. Should be successf
         }
 };
 
-db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
-	if (err) throw err;
-});
+await db.commitObjectUpdate("134e366520a6f93265eb", update);
 ```
 
 
@@ -209,10 +253,7 @@ var update = {
         }
 };
 
-db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
-	if (err) throw err;
-    
-});
+await db.commitObjectUpdate("134e366520a6f93265eb", update);
 ```
 
 
@@ -226,9 +267,7 @@ var update = { //pull a single friend from the best_friends array
         }
 };
 
-db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
-	if (err) throw err;
-});
+await db.commitObjectUpdate("134e366520a6f93265eb", update);
 ```
 
 
@@ -242,9 +281,7 @@ var update = {
         }
 };
 
-db.commitObjectUpdate("134e366520a6f93265eb", update, function (err, entry) {
-	if (err) throw err;
-});
+await db.commitObjectUpdate("134e366520a6f93265eb", update);
 ```
 
 But now we have a problem! Increasing Joe's age by 10 would make him 107, which is over the maximum value we set for his age of 100. This update will be ignored the next time Joe's object is retrieved.
@@ -253,14 +290,10 @@ But now we have a problem! Increasing Joe's age by 10 would make him 107, which 
 
 ### Get An Object's Metadata
 
-Let's say we want to get info on Joe's object, which is held in his first entry on Factom:
+Let's say we want to get info on Joe's object:
 
 ```javascript
-db.getObjectMetadata("134e366520a6f93265eb", function (err, object) {
-    if (err) throw err;
-    console.log('GOT META!');
-    console.log(JSON.stringify(object, undefined, 2));
-});
+let meta = await db.getObjectMetadata("134e366520a6f93265eb")
 ```
 
 
@@ -270,7 +303,6 @@ The output illustrates how the library stores and defines rules for the Object:
 
 
 ```javascript
-GOT META!
 {
   "type": "meta",
   "protocol_version": "0.0.1",
@@ -322,6 +354,8 @@ GOT META!
 
 
 
+
+
 ## Security & Permissions
 
 By default objects created using this library are publicly viewable and editable. This library offers several approaches to keeping objects permissioned and secure:
@@ -355,14 +389,28 @@ The library uses deflate compression to shrink the data that is put into Factom.
 
 
 
-<u>Please note that once an object initialized, AES and compression cannot be changed. Attempting to read an object using incorrect encryption and compression settings will result in an error.</u>
+<u>Please note that once an object is initialized, AES and compression settings cannot be changed. Attempting to read an object using incorrect encryption or compression settings will result in an error.</u>
 
 
 
-## Todo
+# Testing
+
+```
+npm test
+```
+
+
+
+# TODO
 
 - Better examples for field and object rules
 - Full object and field rules table with descriptions
 - Signature based validation for updates
 - Make deflate compression optional for human readability
 - Unit testing for many, many, many test cases
+
+
+
+## Legal
+
+Factom-objectdb logo & Icon packs by [Icons8](https://icons8.com)

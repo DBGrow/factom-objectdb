@@ -1,4 +1,5 @@
-var allfields = {
+//all supported fields and types
+const allfields = {
     addfields: false, //can new fields be added to this object
     deletefields: false, //fields be removed from this object
     editfields: false, //fields be edited in this object
@@ -14,64 +15,60 @@ var allfields = {
 
 this.Builder = function Builder(rules) {
     const self = this;
-    //defaults
 
+    //defaults
     this.rules = {};
 
-
     //pull from rules object if available
-    if (rules) {
 
-        self.rules.editfields = rules.editfields ? rules.editfields : true;
-        self.rules.addfields = rules.addfields ? rules.addfields : true;
-        self.rules.deletefields = rules.deletefields ? rules.deletefields : true;
-        self.rules.renamefields = rules.renamefields ? rules.renamefields : true;
-        self.rules.fields = rules.fields ? rules.fields : undefined;
-
-        self.rules.maxupdates = rules.maxupdates ? rules.maxupdates : undefined;
-        self.rules.signed = rules.signed ? rules.signed : undefined;
-        self.rules.keys = rules.keys ? rules.keys : undefined;
-
-    } else {
-        //set defaults
-
-        self.rules.editfields = true;
-        self.rules.addfields = true;
-        self.rules.deletefields = true;
-        self.rules.renamefields = true;
-    }
+    //set defaults
+    self.rules.addfields = true;
+    self.rules.editfields = true;
+    self.rules.deletefields = true;
+    self.rules.renamefields = true;
 
     this.setEditFields = function (editfields) {
+        if (typeof editfields !== 'boolean') throw new Error('Expected Boolean');
         self.rules.editfields = editfields;
         return this;
     };
 
     this.setAddFields = function (addfields) {
+        if (typeof addfields !== 'boolean') throw new Error('Expected Boolean');
         self.rules.addfields = addfields;
         return this;
     };
 
     this.setDeleteFields = function (deletefields) {
+        if (typeof deletefields !== 'boolean') throw new Error('Expected Boolean');
         self.rules.deletefields = deletefields;
         return this;
     };
 
     this.setRenameFields = function (renamefields) {
+        if (typeof renamefields !== 'boolean') throw new Error('Expected Boolean');
         self.rules.renamefields = renamefields;
         return this;
     };
 
     this.setMaxUpdates = function (maxupdates) {
+        if (typeof maxupdates !== 'number') throw new Error('Expected Number');
+        if (maxupdates <= 0) throw new Error('Expected Positive, Nonzero Number');
         self.rules.maxupdates = maxupdates;
         return this;
     };
 
     this.setSigned = function (signed) {
+        if (typeof signed !== 'boolean') throw new Error('Expected Boolean');
         self.rules.signed = signed;
         return this;
     };
 
     this.setKeys = function (keys) {
+        if (!Array.isArray(keys)) throw new Error('Expected Array');
+
+        //validate public keys
+
         self.rules.keys = keys;
         return this;
     };
