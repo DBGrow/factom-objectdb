@@ -8,11 +8,13 @@ This library enables basic, immutable CRU(~~D~~) database operations for JSON ob
 
 
 
-[TOC]
+
 
 # Motivation
 
 Applications deserve easy, affordable, immutable data storage. Factom-objectdb wraps the required functionality into an easy to use package based on a universal structured data standard (JSON) and language (NodeJS), all for a fraction of the cost of competitors.
+
+
 
 
 
@@ -28,15 +30,21 @@ The price performance of immutable data solutions on Factom, like factom-objectd
 
 
 
+
+
 ### Ease Of Use
 
 factom-objectdb does not require any knowledge of or integration with contract languages like Solidity. It is a language agnostic protocol can be implemented in any programming language. Anyone who can read JSON can understand objectdb.
 
 
 
+
+
 ### No Exchanges or Securities
 
 Entering data costs [Entry Credits](/), a fixed value, non tradable token that can be purchased by anyone, anywhere. Entry credits are not securities, cost $0.001 USD each, and enable the entry of 1 KB of data permanently into the blockchain.
+
+
 
 
 
@@ -51,6 +59,8 @@ You must have the following to write objects & updates using this library:
 The EC address must remain funded to continue creating entries!
 
 Reading stored objects is **free** and does not require an EC address.
+
+
 
 
 
@@ -78,6 +88,8 @@ In `package.json`:
 
 
 
+
+
 # Examples
 
 ## Initialization
@@ -89,9 +101,11 @@ const ES = ;
 var db = new FactomObjectDB({
     db_id: 'factomdbtest:0.0.1', //the ID of your database
     factom: {host: '88.200.170.90'},  //testnet courtesy node IP for example
-    es_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //testnet courtesy private EC address for example
+    ec_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //Public or private EC address
 });
 ```
+
+
 
 
 
@@ -112,6 +126,8 @@ var joe = {
 
 
 
+
+
 Saving the object forever is as easy as:
 
 ```javascript
@@ -125,10 +141,12 @@ db.commitObject(joe._id, joe).then(function(storedObject){
     
 }).catch(function(err){
     throw err;
-})
+});
 ```
 
- It is important to note that creation and updates to objects take up until the next block to be reflected (up to 10 Minutes).
+ It is important to note that creation of and updates to objects take up until the next block to be reflected (up to 10 Minutes).
+
+
 
 
 
@@ -161,12 +179,16 @@ var objectRules = new ObjectRules.Builder()
 
 
 
-Set the field rules for the object at the same time you commit it:
+
+
+You can the field rules for the object at the same time you commit it:
 
 ```javascript
 //commit the initial object and rules to Factom!
-let storedObject = db.commitObject(joe._id, joe);
+let storedObject = await db.commitObject(joe._id, joe, objectRules);
 ```
+
+
 
 
 
@@ -191,6 +213,8 @@ Retrieved Object:
   "best_friends": []
 }
 ```
+
+
 
 
 
@@ -288,6 +312,8 @@ But now we have a problem! Increasing Joe's age by 10 would make him 107, which 
 
 
 
+
+
 ### Get An Object's Metadata
 
 Let's say we want to get info on Joe's object:
@@ -356,9 +382,13 @@ The output illustrates how the library stores and defines rules for the Object:
 
 
 
+
+
 ## Security & Permissions
 
 By default objects created using this library are publicly viewable and editable. This library offers several approaches to keeping objects permissioned and secure:
+
+
 
 
 
@@ -371,15 +401,19 @@ To use AES, specify your key during initialization:
 ```javascript
 var db = new FactomObjectDB({
     //... other options
-    private_key : 'my awesome passphrase' //private key string or buffer
+    aes_key : 'my awesome passphrase' //private key string or buffer
 });
 ```
+
+
 
 
 
 ### Cryptographic Signatures (Coming Soon)
 
 Have an object you want to be publicly readable, but only want to allow updates from authorized parties? Each update entry can be signed using asymmetric encryption keys 
+
+
 
 
 
@@ -393,11 +427,15 @@ The library uses deflate compression to shrink the data that is put into Factom.
 
 
 
+
+
 # Testing
 
 ```
 npm test
 ```
+
+
 
 
 
@@ -408,6 +446,8 @@ npm test
 - Signature based validation for updates
 - Make deflate compression optional for human readability
 - Unit testing for many, many, many test cases
+
+
 
 
 
