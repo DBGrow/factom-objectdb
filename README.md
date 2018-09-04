@@ -2,6 +2,12 @@
 
 # factom-objectdb
 
+![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge)
+
+![Travis (.org)](https://img.shields.io/travis/dbgrow/factom-objectdb.svg?style=for-the-badge)
+
+
+
 A blockchain object database implemented in NodeJS, built on Factom -  all for a fraction of the cost of competitors.
 
 This library enables basic, immutable CRU(~~D~~) database operations for JSON objects, featuring a familiar MongoDB inspired update syntax.
