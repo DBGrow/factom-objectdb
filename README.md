@@ -12,17 +12,7 @@ A blockchain object database implemented in NodeJS, built on Factom -  all for a
 
 This library enables basic immutable Create, Read, and Update database operations for JSON objects stored on the blockchain, featuring a familiar MongoDB inspired update syntax.
 
-
-
-- ### [Installation](#installation)
-
-- ### [Examples](#examples)
-
-- ### [Motivation](#motivation)
-
-- ### [TODO](#todo)
-
-
+### 
 
 # Installation
 
@@ -134,50 +124,6 @@ db.commitObject(joe._id, joe).then(function(storedObject){
 
 
 
-### Object & Field Rules
-
-The library allows placing restrictions on how the objects you store can be updated. The current state of an object is determined by the library using these rules when retrieving the object from Factom.
-
-In this case, `Joe Testerson` is a user in a database. To facilitate that functionality, we should place some restrictions on how his object and it's fields can be updated:
-
-
-
-```javascript
-let FieldRules = require('factom-objectdb/rules/FieldRules');
-let ObjectRules = require('factom-objectdb/rules/ObjectRules');
-
-//declare object rules
-
-let objectRules = new ObjectRules.Builder()
-    .setAddFields(false) //disable adding fields to Joe's object
-    .setDeleteFields(false) //disable deleting fields from to Joe's object
-    .setRenameFields(false) //disable renaming fields in Joe's object
-
-    //declare field rules:
-    .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark Joe's ID final, so it can never be changed
-    .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(true).build()) //mark Joe's name editable so he can change it later
-    .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setMin(0).setMax(100).build()) //Joes age is, updatable, but will be locked to non negative number <= 100
-    .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setMax(5).build()) //limit Joe's best friends to to 5 in count, non deletable
-    .build();
-```
-
-
-
-
-
- the field rules for the object at the same time you commit it:
-
-```javascript
-//commit the initial object and rules to Factom!
-let storedObject = await db.commitObject(joe._id, joe, objectRules);
-```
-
-Please note rules are not updatable at this time. Rule declarations for objects are permanent.
-
-
-
-
-
 ## Get an Object
 
 Get Joe's object using his id: `5ad28b9d18c35e2b4c000001`
@@ -196,8 +142,6 @@ Retrieved Object:
   "best_friends": []
 }
 ```
-
-
 
 
 
@@ -279,25 +223,96 @@ await db.commitObjectUpdate("134e366520a6f93265eb", update);
 
 
 
-Lets say Joe keeps falling for another 10 years:
+
+
+## Object & Field Rules
+
+The library allows placing restrictions on how the objects you store can be updated. The current state of an object is determined by the library using these rules when retrieving the object from Factom.
+
+In this case, `Joe Testerson` is a user in a database. To facilitate that functionality, we should place some restrictions on how his object and it's fields can be updated:
+
+
 
 ```javascript
-var update = {
-        $inc: {  //Increase Joe's age by 10!
-            age: 10
+let FieldRules = require('factom-objectdb/rules/FieldRules');
+let ObjectRules = require('factom-objectdb/rules/ObjectRules');
+
+//declare object rules
+
+let objectRules = new ObjectRules.Builder()
+    .setAddFields(false) //disable adding fields to Joe's object
+    .setDeleteFields(false) //disable deleting fields from to Joe's object
+    .setRenameFields(false) //disable renaming fields in Joe's object
+
+    //declare field rules:
+    .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark Joe's ID final, so it can never be changed
+    .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(true).build()) //mark Joe's name editable so he can change it later
+    .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setMin(0).setMax(100).build()) //Joes age is, updatable, but will be locked to non negative number <= 100
+    .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setMax(5).build()) //limit Joe's best friends to to 5 in count, non deletable
+    .build();
+```
+
+
+
+ the field rules for the object at the same time you commit it:
+
+```javascript
+//commit the initial object and rules to Factom!
+let storedObject = await db.commitObject(joe._id, joe, objectRules);
+```
+
+Please note rules are not updatable at this time. Rule declarations for objects are permanent.
+
+
+
+To demonstrate field rules & restrictions, Lets say Joe falls into a black hole for another 1000 years, lets do the update:
+
+```javascript
+let update = {
+        $inc: {
+            age: 1000
         }
 };
 
 await db.commitObjectUpdate("134e366520a6f93265eb", update);
 ```
 
-But now we have a problem! Increasing Joe's age by 10 would make him 107, which is over the maximum value we set for his age of 100. This update will be ignored the next time Joe's object is retrieved.
+But now we have a problem! Increasing Joe's age by 1000 would make him over 1000 years old, which is over the maximum value we set for his age of 100. This update will be ignored the next time Joe's object is retrieved.
+
+
+
+### ObjectRules Summary Table
+
+Object rules govern the entire object.
+
+| Rule           | Value       | Description                                                  |
+| -------------- | ----------- | ------------------------------------------------------------ |
+| `addfields`    | true\|false | Can new keys be added to the object                          |
+| `editfields`   | true\|false | Can values be changed in the object                          |
+| `deletefields` | true\|false | Can keys be removed from the object                          |
+| `renamefields` | true\|false | Can new keys renamed in the object                           |
+| `maxupdates`   | number      | The maximum number of updates until this object is locked to new updates. |
+| `fields`       | object      | Object of FieldRules                                         |
+
+
+
+### FieldRules Summary Table
+
+ Object rules trump FieldRules in all cases. For example if an object is marked `editfields = false`, setting `editable = true` for a FieldRule will not make that field editable.
+
+| Rule         | Value       | Description                                         |
+| ------------ | ----------- | --------------------------------------------------- |
+| `editable`   | true\|false | Can this field be edited                            |
+| `deletable`  | true\|false | Can this field be deleted                           |
+| `renameable` | true\|false | Can this field be renamed                           |
+| `min`        | number      | The maximum value of the field (Or length of array) |
+| `max`        | number      | The minimum value of the field                      |
 
 
 
 
 
-### Get An Object's Metadata
+## Get An Object's Metadata
 
 Let's say we want to get info on Joe's object:
 
@@ -430,7 +445,7 @@ Applications deserve easy, affordable, immutable data storage. Factom-objectdb w
 
 
 
-### Cost Reduction
+- ### Cost Reduction
 
 The price performance of immutable data solutions on Factom, like factom-objectdb, blow competitors out of the water on a $ per KB basis:
 
@@ -444,7 +459,7 @@ The price performance of immutable data solutions on Factom, like factom-objectd
 
 
 
-### Ease Of Use
+- ### Ease Of Use
 
 factom-objectdb does not require any knowledge of or integration with contract languages like Solidity. It is a language agnostic protocol can be implemented in any programming language. Anyone who can read JSON can understand objectdb.
 
@@ -452,7 +467,7 @@ factom-objectdb does not require any knowledge of or integration with contract l
 
 
 
-### No Exchanges or Securities
+- ### No Exchanges or Securities
 
 Entering data costs [Entry Credits](/), a fixed value, non tradable token that can be purchased by anyone, anywhere. Entry credits are not securities, cost $0.001 USD each, and enable the entry of 1 KB of data permanently into the blockchain.
 
