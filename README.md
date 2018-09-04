@@ -2,11 +2,7 @@
 
 # factom-objectdb
 
-![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge)
-
-![Travis (.org)](https://img.shields.io/travis/dbgrow/factom-objectdb.svg?style=for-the-badge)
-
-
+![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge)![Travis (.org)](https://img.shields.io/travis/DBGrow/factom-objectdb.svg?style=for-the-badge)![Coveralls github](https://img.shields.io/coveralls/github/DBGrow/factom-objectdb.svg?style=for-the-badge)
 
 A blockchain object database implemented in NodeJS, built on Factom -  all for a fraction of the cost of competitors.
 
