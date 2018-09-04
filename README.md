@@ -14,13 +14,13 @@ This library enables basic immutable Create, Read, and Update database operation
 
 
 
-- ### [Installation](#Installation)
+- ### [Installation](#installation)
 
-- ### [Examples](#Examples)
+- ### [Examples](#examples)
 
-- ### [Motivation](#Motivation)
+- ### [Motivation](#motivation)
 
-- ### [TODO](#TODO)
+- ### [TODO](#todo)
 
 
 

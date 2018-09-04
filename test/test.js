@@ -19,7 +19,6 @@ function getDB() {
         },
         db_id: 'factomdbtest:0.0.1',
         ec_address: ES,
-
     });
 }
 
