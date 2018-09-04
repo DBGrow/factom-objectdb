@@ -2,69 +2,25 @@
 
 # factom-objectdb
 
-![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge) - ![Travis (.org)](https://img.shields.io/travis/DBGrow/factom-objectdb.svg?style=for-the-badge)- ![Coveralls github](https://img.shields.io/coveralls/github/DBGrow/factom-objectdb.svg?style=for-the-badge)
+[![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge)](https://npm.org/package/factom-objectdb)
+
+ [![Travis (.org)](https://img.shields.io/travis/DBGrow/factom-objectdb.svg?style=for-the-badge)](https://travis-ci.org/DBGrow/factom-objectdb)
+
+ [![Coveralls github](https://img.shields.io/coveralls/github/DBGrow/factom-objectdb.svg?style=for-the-badge)](https://coveralls.io/github/DBGrow/factom-objectdb)
 
 A blockchain object database implemented in NodeJS, built on Factom -  all for a fraction of the cost of competitors.
 
-This library enables basic, immutable CRU(~~D~~) database operations for JSON objects, featuring a familiar MongoDB inspired update syntax.
+This library enables basic immutable Create, Read, and Update database operations for JSON objects stored on the blockchain, featuring a familiar MongoDB inspired update syntax.
 
 
 
+- ### [Installation](#Installation)
 
+- ### [Examples](#Examples)
 
-# Motivation
+- ### [Motivation](#Motivation)
 
-Applications deserve easy, affordable, immutable data storage. Factom-objectdb wraps the required functionality into an easy to use package based on a universal structured data standard (JSON) and language (NodeJS), all for a fraction of the cost of competitors.
-
-
-
-
-
-### Cost Reduction
-
-The price performance of immutable data solutions on Factom, like factom-objectdb, blow competitors out of the water on a $ per KB basis:
-
-|          | Cost/KB | % of Factom’s Cost |
-| -------- | ------- | ------------------ |
-| Factom   | $0.001  | -                  |
-| Ethereum | $0.13   | 13000% (13x)       |
-| NEO      | $0.22   | 2.47 M% (24800x)   |
-
-
-
-
-
-### Ease Of Use
-
-factom-objectdb does not require any knowledge of or integration with contract languages like Solidity. It is a language agnostic protocol can be implemented in any programming language. Anyone who can read JSON can understand objectdb.
-
-
-
-
-
-### No Exchanges or Securities
-
-Entering data costs [Entry Credits](/), a fixed value, non tradable token that can be purchased by anyone, anywhere. Entry credits are not securities, cost $0.001 USD each, and enable the entry of 1 KB of data permanently into the blockchain.
-
-
-
-
-
-
-
-# Prerequisites
-
-You must have the following to write objects & updates using this library:
-
--  Entry Credits (Buy [Here](/) or [Here](/). Or free on the [testnet faucet](/))
-
-The EC address must remain funded to continue creating entries!
-
-Reading stored objects is **free** and does not require an EC address.
-
-
-
-
+- ### [TODO](#TODO)
 
 
 
@@ -96,28 +52,54 @@ In `package.json`:
 
 ## Initialization
 
+Simple Initialization:
+
 ```javascript
 var {FactomObjectDB} = require('factom-objectdb');
-const ES = ;
 
 var db = new FactomObjectDB({
     db_id: 'factomdbtest:0.0.1', //the ID of your database
-    factom: {host: '88.200.170.90'},  //testnet courtesy node IP for example
     ec_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //Public or private EC address
 });
 ```
 
 
 
+All configuration options:
+
+```javascript
+var db = new FactomObjectDB({
+    db_id: 'factomdbtest:0.0.1', //the ID of your database
+    ec_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //Public or private EC address
+    factom: {
+        factomd: {
+        	host: '52.202.51.228',
+        	port: 8088
+    	},
+    	walletd: {
+        	host: '52.202.51.228',
+        	port: 8089
+    	},
+        user: 'username', // RPC basic authentication
+    	password: 'pwd',
+    	rejectUnauthorized: true, // Set to false to allow connection to a node with a self-signed certificate
+    	retry: {
+        	retries: 4,
+        	factor: 2,
+        	minTimeout: 500,
+        	maxTimeout: 2000
+    	}
+    }
+});
+```
+
 
 
 ## Store an Object
 
-Lets say we have an object we want to store:
+Lets say we have an object we want to store, a person in a database:
 
 ```javascript
-//an example object, a person in a database
-
 var joe = {
     _id: '134e366520a6f93265eb',
     name: 'Joe Testerson',
@@ -126,17 +108,17 @@ var joe = {
 };
 ```
 
+We want to store the object under unique ID `134e366520a6f93265eb` (`joe._id`)
 
 
 
-
-Saving the object forever is as easy as:
+Saving the object permanently in Factom is as easy as:
 
 ```javascript
 //save the initial object to Factom!
 
 //using async/await
-let storedObject = await db.commitObject(joe._id, joe);
+let storedObject = await db.commitObject('134e366520a6f93265eb', joe);
 
 //or using promises
 db.commitObject(joe._id, joe).then(function(storedObject){
@@ -161,12 +143,12 @@ In this case, `Joe Testerson` is a user in a database. To facilitate that functi
 
 
 ```javascript
-var FieldRules = require('./src/rules/FieldRules');
+let FieldRules = require('factom-objectdb/rules/FieldRules');
+let ObjectRules = require('factom-objectdb/rules/ObjectRules');
 
-var ObjectRules = require('./src/rules/ObjectRules');
-declare object rules
-//
-var objectRules = new ObjectRules.Builder()
+//declare object rules
+
+let objectRules = new ObjectRules.Builder()
     .setAddFields(false) //disable adding fields to Joe's object
     .setDeleteFields(false) //disable deleting fields from to Joe's object
     .setRenameFields(false) //disable renaming fields in Joe's object
@@ -183,14 +165,14 @@ var objectRules = new ObjectRules.Builder()
 
 
 
-You can the field rules for the object at the same time you commit it:
+ the field rules for the object at the same time you commit it:
 
 ```javascript
 //commit the initial object and rules to Factom!
 let storedObject = await db.commitObject(joe._id, joe, objectRules);
 ```
 
-
+Please note rules are not updatable at this time. Rule declarations for objects are permanent.
 
 
 
@@ -204,10 +186,9 @@ Get Joe's object using his id: `5ad28b9d18c35e2b4c000001`
 let joe = await db.getObject("134e366520a6f93265eb");
 ```
 
-Output:
+Retrieved Object:
 
 ```javascript
-Retrieved Object:
 {
   "_id": "134e366520a6f93265eb",
   "name": "Joe Testerson",
@@ -441,13 +422,50 @@ npm test
 
 
 
+# Motivation
+
+Applications deserve easy, affordable, immutable data storage. Factom-objectdb wraps the required functionality into an easy to use package based on a universal structured data standard (JSON) and language (NodeJS), all for a fraction of the cost of competitors.
+
+
+
+
+
+### Cost Reduction
+
+The price performance of immutable data solutions on Factom, like factom-objectdb, blow competitors out of the water on a $ per KB basis:
+
+|          | Cost/KB | % of Factom’s Cost |
+| -------- | ------- | ------------------ |
+| Factom   | $0.001  | -                  |
+| Ethereum | $0.13   | 13000% (13x)       |
+| NEO      | $0.22   | 2.47 M% (24800x)   |
+
+
+
+
+
+### Ease Of Use
+
+factom-objectdb does not require any knowledge of or integration with contract languages like Solidity. It is a language agnostic protocol can be implemented in any programming language. Anyone who can read JSON can understand objectdb.
+
+
+
+
+
+### No Exchanges or Securities
+
+Entering data costs [Entry Credits](/), a fixed value, non tradable token that can be purchased by anyone, anywhere. Entry credits are not securities, cost $0.001 USD each, and enable the entry of 1 KB of data permanently into the blockchain.
+
+
+
+
+
 # TODO
 
 - Better examples for field and object rules
 - Full object and field rules table with descriptions
 - Signature based validation for updates
 - Make deflate compression optional for human readability
-- Unit testing for many, many, many test cases
 
 
 
