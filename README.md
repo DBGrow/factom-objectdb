@@ -2,7 +2,7 @@
 
 # factom-objectdb
 
-[![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge)](https://npm.org/package/factom-objectdb)
+[![npm](https://img.shields.io/npm/v/factom-objectdb.svg?style=for-the-badge)](https://npmjs.com/package/factom-objectdb)
 
  [![Travis (.org)](https://img.shields.io/travis/DBGrow/factom-objectdb.svg?style=for-the-badge)](https://travis-ci.org/DBGrow/factom-objectdb)
 
