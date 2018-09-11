@@ -437,6 +437,10 @@ npm test
 
 
 
+# [Spec](SPEC.md)
+
+
+
 # Motivation
 
 Applications deserve easy, affordable, immutable data storage. Factom-objectdb wraps the required functionality into an easy to use package based on a universal structured data standard (JSON) and language (NodeJS), all for a fraction of the cost of competitors.
@@ -449,11 +453,11 @@ Applications deserve easy, affordable, immutable data storage. Factom-objectdb w
 
 The price performance of immutable data solutions on Factom, like factom-objectdb, blow competitors out of the water on a $ per KB basis:
 
-|          | Cost/KB | % of Factom’s Cost |
-| -------- | ------- | ------------------ |
-| Factom   | $0.001  | -                  |
-| Ethereum | $0.13   | 13000% (13x)       |
-| NEO      | $0.22   | 2.47 M% (24800x)   |
+|          | Cost/KB |
+| -------- | ------- |
+| Factom   | $0.001  |
+| Ethereum | $0.13   |
+| NEO      | $0.22   |
 
 
 
