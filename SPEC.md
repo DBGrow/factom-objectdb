@@ -10,8 +10,6 @@
 
 A cross platform blockchain object database built on Factom.
 
-
-
 # Specification
 
 
@@ -28,7 +26,7 @@ All protocol data is formatted as JSON ([RFC 7159](https://tools.ietf.org/html/r
 
 - **Asymmetric Encryption** - ed25519 asymmetric cryptography is chosen as the sole algorithm for signatures.
 - **Symmetric Encryption** - AES-256 is chosen as the sole algorithm for encryption
-- **Hashing** - SHA-256d is chosen as the sole algorithm for hashing
+- **Hashing** - SHA-256d (a double round of SHA-256) is chosen as the sole algorithm for hashing
 
 
 
@@ -46,43 +44,48 @@ For example:
 - An unsigned, encrypted object is private, but if the private key is compromised anyone can read and update it.
 - A signed, encrypted object is private, and each update must be authentic to it's owner.
 
-And so on
+And so on.
 
 
 
-## Factom
+## Chain ID Derivation & Namespace
 
-### Entry Content
-
-All protocol data is contained in the content of entries. This allows all object and database data to be optionally.
-
-### Entry ExtIDS
-
-First entry extIds for all chains shall be of the form:
+The ExtIDs of the first entry on any objectdb chain or resource is deterministically defined. It shall be of the form:
 
 | Index | Value    | Description               |
 | ----- | -------- | ------------------------- |
 | 0     | objectdb | Application nonce         |
 | 1     | 0.0.0    | ObjectDB Protocol version |
-| 2     | *        | ObjectDB URI space        |
+| 2     | *        | ObjectDB URI space.       |
 
 Entry ExtIDS beyond the initial entry in a chain are ignored.
 
 
 
-
-
-## Databases [TODO]
+## Databases
 
 Objects are divided into logical groups by databases. Each database allows a singular listing of an object under a unique ID string. 
 
 
 
-### Database Index Chain [TODO]
+## Object Index Chain
 
-The database index chain contains references to the IDs of objects collected under each database. The index chain improves object discoverability since object IDs can be forgotten.
+The object index chain contains references to the IDs of objects created under each database. The index chain improves object discoverability since object IDs can be forgotten if not recorded. The Object Index Chain is optional, and may or may not exist depending on the database. It is up to the user to establish an index chain if they wish.
 
+### Object Index Chain ID Derivation
 
+From the section above "Chain ID Derivation & Namespace", ExtID[2] is used as the object namespace. The namespace value to get a databases index Chain' ID shall be hex encoded: `database:<databaseid>:index` where `<databaseid>` is replaced with the ID of the database.
+
+### Object Index Chain Entry Content
+
+```json
+{
+    "type":"index",
+    "ids" :[
+        "'5b396865cbf4239c10000001"
+    ],
+}
+```
 
 
 
@@ -98,24 +101,19 @@ The protocol allows unlimited object depth and width up to the 10KB limit of an 
 
 Each object in the database is represented by a chain, which stores it's initial state, rules, and subsequent updates.
 
-An objects chain ID can be calculated as:
+#### Object Chain ID Derivation
 
-```javascript
-sha256d(databaseId + objectId)
-```
-
-where `objectId` is a string identifier unique among the objects in the database. As such, there is a single unique chain for each object and duplicates are barred due to Factom's rules.
+From the section above "Chain ID Derivation & Namespace", ExtID[2] is used as the object namespace. The namespace value to get an object's Chain ID shall be hex encoded: `database:<databaseid>:object:<objectid>` where `<databaseid>` is replace with the ID of the database, and `<objectid>` is replaced with the ID of the object.
 
 
 
-#### Object Metadata Entry
+#### Object Chain First Entry
 
+##### First Entry Content Example
 
-
-##### Metadata Content Example
-
-```
+```json
 {
+    "type":"meta",
     "object": {
         "_id": "5b396865cbf4239c10000001",
         "name": "Joe Testerson",
@@ -125,13 +123,11 @@ where `objectId` is a string identifier unique among the objects in the database
     "rules": {
         "editfields": true,
         "addfields": false,
-        "deletefields": false,
-        "renamefields": false,
+        "deletefields": false
         "fields": {
             "_id": {
                 "editable": false,
                 "deletable": true,
-                "renameable": true,
                 "type": "string"
             }
         }
@@ -162,13 +158,12 @@ Object rules govern the entire object.
 
 ##### Field Rules
 
-| Rule         | Value       | Description                                         |
-| ------------ | ----------- | --------------------------------------------------- |
-| `editable`   | true\|false | Can this field be edited                            |
-| `deletable`  | true\|false | Can this field be deleted                           |
-| `renameable` | true\|false | Can this field be renamed                           |
-| `min`        | number      | The maximum value of the field (Or length of array) |
-| `max`        | number      | The minimum value of the field                      |
+| Rule        | Value       | Description                                         |
+| ----------- | ----------- | --------------------------------------------------- |
+| `editable`  | true\|false | Can this field be edited                            |
+| `deletable` | true\|false | Can this field be deleted                           |
+| `min`       | number      | The maximum value of the field (Or length of array) |
+| `max`       | number      | The minimum value of the field                      |
 
 Object rules trump field level rules in all cases. For example if an object is marked `editfields = false`, setting `editable = true` for a FieldRule will not make that field editable.
 
@@ -176,10 +171,13 @@ Object rules trump field level rules in all cases. For example if an object is m
 
 #### Object Update Entries
 
+Object update entries can be placed on the object's chain to immutably change the content of the object.
+
 ##### Update Content Example
 
-```
+```json
 {
+    "type":"update",
     "update":{
         "$inc":{
             "age": 1,

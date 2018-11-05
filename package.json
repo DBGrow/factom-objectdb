@@ -1,13 +1,15 @@
 {
   "name": "factom-objectdb",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Object database implementation for the Factom protocol",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/drkatz/factom-objectdb.git"
   },
   "scripts": {
-    "test": "nyc mocha"
+    "test": "nyc mocha",
+    "start": "node index.js"
   },
   "directories": {
     "test": "test"
@@ -15,13 +17,20 @@
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/drkatz/factom-objectdb/issues"
+    "url": "https://github.com/dbgrow/factom-objectdb/issues"
   },
-  "homepage": "https://github.com/drkatz/factom-objectdb#readme",
+  "homepage": "https://github.com/dbgrow/factom-objectdb#readme",
   "dependencies": {
     "factom": "0.3.1",
     "aes256": "1.0.3",
-    "objectid": "3.2.1"
+    "objectid": "3.2.1",
+    "factomd-cache": "0.2.2",
+    "express": "4.16.4",
+    "sodb": "1.2.5",
+    "level": "4.0.0",
+    "level-party": "3.0.4",
+    "axios": "0.18.0",
+    "body-parser": "latest"
   },
   "devDependencies": {
     "chai": "4.1.2",

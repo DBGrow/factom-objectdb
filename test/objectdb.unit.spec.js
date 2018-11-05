@@ -1,37 +1,40 @@
 const assert = require('chai').assert;
 
-var {FactomObjectDB} = require('../src/FactomObjectDB');
-var ObjectId = require('objectid');
-var FieldRules = require('../src/rules/FieldRules');
-var ObjectRules = require('../src/rules/ObjectRules');
-var {FactomCli} = require('factom');
+const {FactomObjectDB} = require('../src/FactomObjectDB');
+const ObjectId = require('objectid');
+const FieldRules = require('../src/rules/FieldRules');
+const ObjectRules = require('../src/rules/ObjectRules');
 
 //Testnet credentials, enjoy the free testnet EC's!
 const ES = 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a';
-const testObjectId = '5b396865cbf4239c10000001';
-const testAESObjectId = '5b8b00521295da9479000006';
+const testObjectId = '5bdf8697c45ceeb43c00001f';
+const testAESObjectId = '5bdf8a1f807be19e3e000020';
+
+const db = new FactomObjectDB({
+    factom: {
+        host: '0.testnet.factom.dbgrow.com',
+        port: 8088
+    },
+    db_id: 'factomdbtest:0.0.2',
+    ec_address: ES,
+});
+
+const aesdb = new FactomObjectDB({
+    factom: {
+        host: '0.testnet.factom.dbgrow.com',
+        port: 8088
+    },
+    db_id: 'factomdbtest:0.0.2',
+    ec_address: ES,
+    aes_key: 'test'
+});
 
 function getDB() {
-    return new FactomObjectDB({
-        factom: {
-            host: '0.testnet.factom.dbgrow.com',
-            port: 8088
-        },
-        db_id: 'factomdbtest:0.0.1',
-        ec_address: ES,
-    });
+    return db;
 }
 
 function getAESDB() {
-    return new FactomObjectDB({
-        factom: {
-            host: '0.testnet.factom.dbgrow.com',
-            port: 8088
-        },
-        db_id: 'factomdbtest:0.0.1',
-        ec_address: ES,
-        aes_key: 'test'
-    });
+    return aesdb;
 }
 
 describe('ObjectDB Tests', async function () {
@@ -832,7 +835,6 @@ describe('ObjectDB Tests', async function () {
             db = getDB();
             let meta = await db.getObjectMetadata(testObjectId);
             assert(meta !== undefined, 'No object returned from getObjectMetadata');
-
         });
 
         it('Get Object Metadata (AES)', async function () {    //get a test object's metadata
@@ -857,103 +859,125 @@ describe('ObjectDB Tests', async function () {
         });
     });
 
-    describe('Write Methods', function () {
+    describe('Query Methods', function () {
 
-        it('Commit Object', async function () {   //commit a new object
+        it('Find One', function () {
             this.timeout(60000);
 
-            let db = getDB();
-
-            let object = {
-                _id: new ObjectId(),
-                name: 'Joe Testerson',
-                age: 5,
-                best_friends: []
-            };
-
-            let objectRules = new ObjectRules.Builder()
-                .setAddFields(true) //disable adding fields to the object
-                .setDeleteFields(false) //disable deleting fields from the object
-                .setRenameFields(false) //disable renaming fields in the object
-
-                //handle field rules:
-                .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the person's ID final
-                .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the name final
-                .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setDeletable(false).setMin(0).setMax(100).build()) //the age is non negative integer <= 100 that cannot be deleted
-                .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setDeletable(false).setMax(5).build()) //limit best friends to 5 in count, non deletable
-                .build();
-
-            // console.log(JSON.stringify(objectRules, undefined, 2));
-
-            //check if our object rules are valid, otherwise we'll get an error when we try to inter it into Factom
-            assert(ObjectRules.validate(object, objectRules), 'Object rules were invalid!');
-
-            //commit the initial object and rules to Factom!
-            let entry = await db.commitObject(object._id, object, objectRules);
-            console.log(JSON.stringify(entry, undefined, 2));
+            db = getDB();
+            const object = db.findOne({_id: testObjectId});
+            assert(object !== undefined, "Failed to return object from findOne");
+            assert(typeof object === 'object', "Failed to return type object from findOne");
+            assert(object._id === testObjectId, "Failed to return correct object from findOne");
         });
 
-        it('Commit Object(AES)', async function () {   //commit a new object
-            this.timeout(60000);
-
-            let db = getAESDB();
-
-            var object = {
-                _id: new ObjectId(),
-                name: 'Joe Testerson',
-                age: 5,
-                best_friends: []
-            };
-
-            let objectRules = new ObjectRules.Builder()
-                .setAddFields(true) //disable adding fields to the object
-                .setDeleteFields(false) //disable deleting fields from the object
-                .setRenameFields(false) //disable renaming fields in the object
-
-                //handle field rules:
-                .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the person's ID final
-                .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the name final
-                .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setDeletable(false).setMin(0).setMax(100).build()) //the age is non negative integer <= 100 that cannot be deleted
-                .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setDeletable(false).setMax(5).build()) //limit best friends to 5 in count, non deletable
-                .build();
-
-            // console.log(JSON.stringify(objectRules, undefined, 2));
-
-            //check if our object rules are valid, otherwise we'll get an error when we try to inter it into Factom
-            if (!ObjectRules.validate(object, objectRules)) throw new Error('Object rules were invalid!');
-
-            //commit the initial object and rules to Factom!
-            let chain = await db.commitObject(object._id, object, objectRules);
-
-            console.log(JSON.stringify(chain, undefined, 2));
-            console.log(object._id);
-        });
-
-        it('Commit Object Update', async function () {   //commit a new object
-            this.timeout(60000);
-
-            let db = getDB();
-
-            let update = {
-                $inc: {
-                    age: 3
-                }
-            };
-            let result = await db.commitObjectUpdate(testObjectId, update);
-        });
-
-        it('Commit Object Update(AES)', async function () {   //commit a new object
-            this.timeout(60000);
-
-            let update = {
-                $inc: {
-                    age: 3
-                }
-            };
-
-            let db = getAESDB();
-
-            let result = await db.commitObjectUpdate(testAESObjectId, update);
+        it('Find', function () {
+            db = getDB();
+            const objects = db.find({_id: testObjectId});
+            console.log(objects);
+            assert(objects !== undefined, "Failed to return objects from find");
+            assert(Array.isArray(objects), "Failed to return type array from find");
+            assert(objects.find(object => object._id === testObjectId), "Failed to return target object")
         });
     });
+    /*
+        describe('Write Methods', function () {
+
+            it('Commit Object', async function () {   //commit a new object
+                this.timeout(60000);
+
+                let db = getDB();
+
+                let object = {
+                    _id: new ObjectId(),
+                    name: 'Joe Testerson',
+                    age: 5,
+                    best_friends: []
+                };
+
+                let objectRules = new ObjectRules.Builder()
+                    .setAddFields(true) //disable adding fields to the object
+                    .setDeleteFields(false) //disable deleting fields from the object
+                    .setRenameFields(false) //disable renaming fields in the object
+
+                    //handle field rules:
+                    .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the person's ID final
+                    .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the name final
+                    .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setDeletable(false).setMin(0).setMax(100).build()) //the age is non negative integer <= 100 that cannot be deleted
+                    .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setDeletable(false).setMax(5).build()) //limit best friends to 5 in count, non deletable
+                    .build();
+
+                // console.log(JSON.stringify(objectRules, undefined, 2));
+
+                //check if our object rules are valid, otherwise we'll get an error when we try to inter it into Factom
+                assert(ObjectRules.validate(object, objectRules), 'Object rules were invalid!');
+
+                //commit the initial object and rules to Factom!
+                let entry = await db.commitObject(object._id, object, objectRules);
+                console.log(JSON.stringify(entry, undefined, 2));
+            });
+
+            it('Commit Object(AES)', async function () {   //commit a new object
+                this.timeout(60000);
+
+                let db = getAESDB();
+
+                var object = {
+                    _id: new ObjectId(),
+                    name: 'Joe Testerson',
+                    age: 5,
+                    best_friends: []
+                };
+
+                let objectRules = new ObjectRules.Builder()
+                    .setAddFields(true) //disable adding fields to the object
+                    .setDeleteFields(false) //disable deleting fields from the object
+                    .setRenameFields(false) //disable renaming fields in the object
+
+                    //handle field rules:
+                    .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the person's ID final
+                    .addFieldRule('name', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark the name final
+                    .addFieldRule('age', new FieldRules.Builder().setType('number').setEditable(true).setDeletable(false).setMin(0).setMax(100).build()) //the age is non negative integer <= 100 that cannot be deleted
+                    .addFieldRule('best_friends', new FieldRules.Builder().setType('array').setEditable(true).setDeletable(false).setMax(5).build()) //limit best friends to 5 in count, non deletable
+                    .build();
+
+                // console.log(JSON.stringify(objectRules, undefined, 2));
+
+                //check if our object rules are valid, otherwise we'll get an error when we try to inter it into Factom
+                if (!ObjectRules.validate(object, objectRules)) throw new Error('Object rules were invalid!');
+
+                //commit the initial object and rules to Factom!
+                let chain = await db.commitObject(object._id, object, objectRules);
+
+                console.log(JSON.stringify(chain, undefined, 2));
+                console.log(object._id);
+            });
+
+            it('Commit Object Update', async function () {   //commit a new object
+                this.timeout(60000);
+
+                let db = getDB();
+
+                let update = {
+                    $inc: {
+                        age: 3
+                    }
+                };
+                let result = await db.commitObjectUpdate(testObjectId, update);
+            });
+
+            it('Commit Object Update(AES)', async function () {   //commit a new object
+                this.timeout(60000);
+
+                let update = {
+                    $inc: {
+                        age: 3
+                    }
+                };
+
+                let db = getAESDB();
+
+                let result = await db.commitObjectUpdate(testAESObjectId, update);
+            });
+        });*/
 });

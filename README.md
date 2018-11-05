@@ -10,15 +10,23 @@
 
 A blockchain object database implemented in NodeJS, built on Factom -  all for a fraction of the cost of competitors.
 
-This library enables basic immutable Create, Read, and Update database operations for JSON objects stored on the blockchain, featuring a familiar MongoDB inspired update syntax.
+This database enables basic immutable Create, Read, and Update database operations for JSON objects stored on the Factom blockchain, and features a familiar MongoDB inspired update syntax.
 
-### 
+You can run factom-objectdb as a standalone operational database daemon(HTTP API), or use it as a library in NodeJS (see examples below)
 
 # Installation
 
- Command Line:
+  Command Line:
 
-```javascript
+```bash
+git clone https://github.com/DBGrow/factom-objectdb.git
+```
+
+**or**
+
+Using NPM:
+
+```bash
 npm -i factom-objectdb
 ```
 
@@ -26,28 +34,48 @@ npm -i factom-objectdb
 
 In `package.json`:
 
-```javascript
+```json
 "dependencies": {
-    "factom-objectdb": "0.0.2",
+    "factom-objectdb": "0.0.3",
 }
 ```
 
 
 
+## Running As Daemon
+
+To run factom-objectdb standalone as a daemon and API host from the command line:
+
+```bash
+cd factom-objectdb
+npm start
+```
+
+The objectdb HTTP API will be available at port 3000 on your localhost
+
+### Config File
+
+You can use the `config.json` file in the root project directory to control how the daemon runs:
+
+```json
+{
+    "apiport":3000,
+    "es":"Es3k4L7La1g7CY5z....."
+}
+```
 
 
 
-
-# Examples
+# Library Examples
 
 ## Initialization
 
 Simple Initialization:
 
 ```javascript
-var {FactomObjectDB} = require('factom-objectdb');
+const {FactomObjectDB} = require('factom-objectdb');
 
-var db = new FactomObjectDB({
+const db = new FactomObjectDB({
     db_id: 'factomdbtest:0.0.1', //the ID of your database
     ec_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //Public or private EC address
 });
@@ -58,7 +86,7 @@ var db = new FactomObjectDB({
 All configuration options:
 
 ```javascript
-var db = new FactomObjectDB({
+const db = new FactomObjectDB({
     db_id: 'factomdbtest:0.0.1', //the ID of your database
     ec_address: 'Es3k4L7La1g7CY5zVLer21H3JFkXgCBCBx8eSM2q9hLbevbuoL6a',  //Public or private EC address
     factom: {
@@ -90,7 +118,7 @@ var db = new FactomObjectDB({
 Lets say we have an object we want to store, a person in a database:
 
 ```javascript
-var joe = {
+const joe = {
     _id: '134e366520a6f93265eb',
     name: 'Joe Testerson',
     age: 30,
@@ -108,7 +136,7 @@ Saving the object permanently in Factom is as easy as:
 //save the initial object to Factom!
 
 //using async/await
-let storedObject = await db.commitObject('134e366520a6f93265eb', joe);
+const storedObject = await db.commitObject('134e366520a6f93265eb', joe);
 
 //or using promises
 db.commitObject(joe._id, joe).then(function(storedObject){
@@ -129,7 +157,7 @@ db.commitObject(joe._id, joe).then(function(storedObject){
 Get Joe's object using his id: `5ad28b9d18c35e2b4c000001`
 
 ```javascript
-let joe = await db.getObject("134e366520a6f93265eb");
+const joe = await db.getObject("134e366520a6f93265eb");
 ```
 
 Retrieved Object:
@@ -242,7 +270,6 @@ let ObjectRules = require('factom-objectdb/rules/ObjectRules');
 let objectRules = new ObjectRules.Builder()
     .setAddFields(false) //disable adding fields to Joe's object
     .setDeleteFields(false) //disable deleting fields from to Joe's object
-    .setRenameFields(false) //disable renaming fields in Joe's object
 
     //declare field rules:
     .addFieldRule('_id', new FieldRules.Builder().setType('string').setEditable(false).build()) //mark Joe's ID final, so it can never be changed
@@ -258,7 +285,7 @@ let objectRules = new ObjectRules.Builder()
 
 ```javascript
 //commit the initial object and rules to Factom!
-let storedObject = await db.commitObject(joe._id, joe, objectRules);
+const storedObject = await db.commitObject(joe._id, joe, objectRules);
 ```
 
 Please note rules are not updatable at this time. Rule declarations for objects are permanent.
@@ -268,7 +295,7 @@ Please note rules are not updatable at this time. Rule declarations for objects 
 To demonstrate field rules & restrictions, Lets say Joe falls into a black hole for another 1000 years, lets do the update:
 
 ```javascript
-let update = {
+const update = {
         $inc: {
             age: 1000
         }
@@ -290,7 +317,6 @@ Object rules govern the entire object.
 | `addfields`    | true\|false | Can new keys be added to the object                          |
 | `editfields`   | true\|false | Can values be changed in the object                          |
 | `deletefields` | true\|false | Can keys be removed from the object                          |
-| `renamefields` | true\|false | Can new keys renamed in the object                           |
 | `maxupdates`   | number      | The maximum number of updates until this object is locked to new updates. |
 | `fields`       | object      | Object of FieldRules                                         |
 
@@ -300,13 +326,13 @@ Object rules govern the entire object.
 
  Object rules trump FieldRules in all cases. For example if an object is marked `editfields = false`, setting `editable = true` for a FieldRule will not make that field editable.
 
-| Rule         | Value       | Description                                         |
-| ------------ | ----------- | --------------------------------------------------- |
-| `editable`   | true\|false | Can this field be edited                            |
-| `deletable`  | true\|false | Can this field be deleted                           |
-| `renameable` | true\|false | Can this field be renamed                           |
-| `min`        | number      | The maximum value of the field (Or length of array) |
-| `max`        | number      | The minimum value of the field                      |
+| Value       | Description                                         |
+| ----------- | --------------------------------------------------- |
+| true\|false | Can this field be edited                            |
+| true\|false | Can this field be deleted                           |
+| true\|false | Can this field be renamed                           |
+| number      | The maximum value of the field (Or length of array) |
+| number      | The minimum value of the field                      |
 
 
 
@@ -317,7 +343,7 @@ Object rules govern the entire object.
 Let's say we want to get info on Joe's object:
 
 ```javascript
-let meta = await db.getObjectMetadata("134e366520a6f93265eb")
+const meta = await db.getObjectMetadata("134e366520a6f93265eb")
 ```
 
 
@@ -397,19 +423,11 @@ Objects and updates written using this library can be encrypted using AES256. Do
 To use AES, specify your key during initialization:
 
 ```javascript
-var db = new FactomObjectDB({
+const db = new FactomObjectDB({
     //... other options
     aes_key : 'my awesome passphrase' //private key string or buffer
 });
 ```
-
-
-
-
-
-### Cryptographic Signatures (Coming Soon)
-
-Have an object you want to be publicly readable, but only want to allow updates from authorized parties? Each update entry can be signed using asymmetric encryption keys 
 
 
 
@@ -425,15 +443,46 @@ The library uses deflate compression to shrink the data that is put into Factom.
 
 
 
+# HTTP API
 
+## GET
+
+### Get Object - `/api/v1/db/:dbid/object/:objectid`
+
+### Query Object - `/api/v1/db/:dbid/object`
+
+| Query Parameter | Type   | Validation                         | Required |
+| --------------- | ------ | ---------------------------------- | -------- |
+| `query`         | object | JSON object, valid query structure | Y        |
+|                 |        |                                    |          |
+
+### Query Objects- `/api/v1/db/:dbid/objects`
+
+| Query Parameter | Type   | Validation                         | Required |
+| --------------- | ------ | ---------------------------------- | -------- |
+| `query`         | object | JSON object, valid query structure | Y        |
+|                 |        |                                    |          |
+
+## POST
+
+### Commit Object- `/api/v1/db/:dbid/object/:objectid`
+
+Request body must be a valid JSON object
+
+| Query Parameter | Type   | Validation                      | Required |
+| --------------- | ------ | ------------------------------- | -------- |
+| `rules`         | object | JSON object, valid object rules | N        |
+|                 |        |                                 |          |
+
+### Commit Object Update- `/api/v1/db/:dbid/object/:objectid`
 
 # Testing
+
+factom-objectdb uses chai.js
 
 ```
 npm test
 ```
-
-
 
 
 
@@ -477,10 +526,9 @@ Entering data costs [Entry Credits](/), a fixed value, non tradable token that c
 
 
 
-
-
 # TODO
 
+- Asymmetric entry signing (Coming Soon)
 - Better examples for field and object rules
 - Full object and field rules table with descriptions
 - Signature based validation for updates
