@@ -26,6 +26,7 @@ describe('API Unit Tests', function () {
     });
 
     it('Get Object', async function () {
+        this.timeout(60000);
         const object = await client.getObject(testObjectId);
         assert(object !== undefined, "Failed to return object");
         assert(typeof object === 'object', "Failed to return object");
@@ -33,6 +34,7 @@ describe('API Unit Tests', function () {
     });
 
     it('Find Object', async function () {
+        this.timeout(60000);
         const object = await client.findObject({_id: testObjectId});
         assert(object !== undefined, "Failed to return object from findOne");
         assert(typeof object === 'object', "Failed to return type object from findOne");
@@ -40,6 +42,7 @@ describe('API Unit Tests', function () {
     });
 
     it('Find Objects', async function () {
+        this.timeout(60000);
         const objects = await client.findObjects({_id: testObjectId});
         assert(objects !== undefined, "Failed to return objects from find");
         assert(Array.isArray(objects), "Failed to return type array from find");
@@ -47,6 +50,7 @@ describe('API Unit Tests', function () {
     });
 
     it('Commit Object', async function () {
+        this.timeout(60000);
         const _id = new Date().getTime();
         const object = { //the initial version of the object
             _id: _id,
@@ -72,6 +76,7 @@ describe('API Unit Tests', function () {
     });
 
     it('Commit Object Update', async function () {
+        this.timeout(60000);
         let update = {
             $inc: {
                 age: 3

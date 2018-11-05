@@ -16,7 +16,6 @@ const {Chain} = require('factom/src/chain');
 
 let dbId = '';
 let aesKey;
-const cache = new FactomdCache({});
 const sodb = require('sodb');
 const db = new sodb();
 
@@ -27,6 +26,7 @@ function FactomObjectDB(params) {
     if (params.db_id) dbId = params.db_id; //db ID override
 
     const cli = new FactomCli(params.factom ? params.factom : {});
+    const cache = new FactomdCache(params.factom ? {factomdParams: params.factom} : {});
 
     const ec_address = params.ec_address; //if not included will result in read only access
 
