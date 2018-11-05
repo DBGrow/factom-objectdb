@@ -7,7 +7,9 @@ const {FactomObjectDB} = require('../src/FactomObjectDB');
 const dbmap = new Map();
 
 //get existing object databases and load them
-console.log('Databases: ' + fs.readdirSync('./databases'));
+console.log('Loading Databases: ' + fs.readdirSync('./databases'));
+if (!fs.existsSync('./databases')) fs.mkdirSync('./databases');
+
 fs.readdirSync('./databases').forEach(id => {
     getDB(id)
 });

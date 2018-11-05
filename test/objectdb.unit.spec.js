@@ -880,7 +880,6 @@ describe('ObjectDB Tests', async function () {
             assert(objects.find(object => object._id === testObjectId), "Failed to return target object")
         });
     });
-    /*
         describe('Write Methods', function () {
 
             it('Commit Object', async function () {   //commit a new object
@@ -979,5 +978,5 @@ describe('ObjectDB Tests', async function () {
 
                 let result = await db.commitObjectUpdate(testAESObjectId, update);
             });
-        });*/
+        });
 });
